@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OpenWebUI Dev (Frontend+Backend)" type="CompoundRunConfigurationType">
+    <toRun>
+      <configuration name="OpenWebUI Backend (Uvicorn 8080)" />
+      <configuration name="OpenWebUI Frontend (Vite dev)" />
+    </toRun>
+    <method v="2" />
+  </configuration>
+</component>
