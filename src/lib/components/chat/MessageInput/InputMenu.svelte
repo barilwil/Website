@@ -211,6 +211,8 @@
 						</DropdownMenu.Item>
 					</Tooltip>
 
+
+					<!--- Notes Component in the drop down menu of the main textbox
 					{#if $config?.features?.enable_notes ?? false}
 						<Tooltip
 							content={fileUploadCapableModels.length !== selectedModels.length
@@ -242,6 +244,7 @@
 							</button>
 						</Tooltip>
 					{/if}
+					-->
 
 					{#if ($knowledge ?? []).length > 0}
 						<Tooltip

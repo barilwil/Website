@@ -218,7 +218,7 @@
 						temporaryChatEnabled.set(!$temporaryChatEnabled);
 					}
 
-					await goto('/');
+					await goto('/assistant');
 					const newChatButton = document.getElementById('new-chat-button');
 					setTimeout(() => {
 						newChatButton?.click();
@@ -350,19 +350,22 @@
 					</div>
 				{/if}
 
-				<Sidebar />
+				{#if $page.url.pathname !== '/' && !$page.url.pathname.startsWith('/labs')}
+					<Sidebar />
+				{/if}
 
 				{#if loaded}
 					<slot />
 				{:else}
 					<div
 						class="w-full flex-1 h-full flex items-center justify-center {$showSidebar
-							? '  md:max-w-[calc(100%-260px)]'
-							: ' '}"
+                ? '  md:max-w-[calc(100%-260px)]'
+                : ' '}"
 					>
 						<Spinner className="size-5" />
 					</div>
 				{/if}
+
 			{/if}
 		</div>
 	</div>

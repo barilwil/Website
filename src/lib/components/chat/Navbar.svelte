@@ -124,7 +124,7 @@
 											await temporaryChatEnabled.set(!$temporaryChatEnabled);
 										}
 
-										await goto('/');
+										await goto('/assistant');
 
 										// add 'temporary-chat=true' to the URL
 										if ($temporaryChatEnabled) {

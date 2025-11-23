@@ -19,6 +19,7 @@ from sqlalchemy.sql import exists
 # Note DB Schema
 ####################
 
+#Might be Deleted
 
 class Note(Base):
     __tablename__ = "note"

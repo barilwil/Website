@@ -124,7 +124,7 @@
 		if (res) {
 			tags.set(await getAllTags(localStorage.token));
 			if ($chatId === id) {
-				await goto('/');
+				await goto('/assistant');
 
 				await chatId.set('');
 				await tick();

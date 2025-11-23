@@ -488,7 +488,7 @@
 					}
 
 					clickTimer = setTimeout(async () => {
-						await goto('/');
+						await goto('/assistant');
 
 						const folder = await getFolderById(localStorage.token, folderId).catch((error) => {
 							toast.error(`${error}`);

@@ -41,6 +41,10 @@
 		pinnedChats,
 		showEmbeds
 	} from '$lib/stores';
+
+	$: isLabsRoute = $page.url.pathname.startsWith('/labs');
+	$: sidebarVisible = $showSidebar && !isLabsRoute;
+
 	import {
 		convertMessagesToHistory,
 		copyToClipboard,
@@ -196,7 +200,7 @@
 			const chatInput = document.getElementById('chat-input');
 			chatInput?.focus();
 		} else {
-			await goto('/');
+			await goto('/assistant');
 		}
 	};
 
@@ -952,7 +956,7 @@
 		}
 
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
-			await goto('/');
+			await goto('/assistant');
 			return null;
 		});
 
@@ -2261,17 +2265,18 @@
 	}}
 />
 
-<div
-	class="h-screen max-h-[100dvh] transition-width duration-200 ease-in-out {$showSidebar
-		? '  md:max-w-[calc(100%-260px)]'
-		: ' '} w-full max-w-full flex flex-col"
-	id="chat-container"
->
-	{#if !loading}
+	<div
+		class="h-screen max-h-[100dvh] transition-width duration-200 ease-in-out {sidebarVisible
+    	? '  md:max-w-[calc(100%-260px)]'
+    	: ' '} w-full max-w-full flex flex-col"
+		id="chat-container"
+	>
+
+{#if !loading}
 		<div in:fade={{ duration: 50 }} class="w-full h-full flex flex-col">
 			{#if $selectedFolder && $selectedFolder?.meta?.background_image_url}
 				<div
-					class="absolute {$showSidebar
+					class="absolute {sidebarVisible
 						? 'md:max-w-[calc(100%-260px)] md:translate-x-[260px]'
 						: ''} top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat"
 					style="background-image: url({$selectedFolder?.meta?.background_image_url})  "
@@ -2282,7 +2287,7 @@
 				/>
 			{:else if $settings?.backgroundImageUrl ?? $config?.license_metadata?.background_image_url ?? null}
 				<div
-					class="absolute {$showSidebar
+					class="absolute {sidebarVisible
 						? 'md:max-w-[calc(100%-260px)] md:translate-x-[260px]'
 						: ''} top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat"
 					style="background-image: url({$settings?.backgroundImageUrl ??

@@ -23,19 +23,14 @@
 	onMount(async () => {
 		if ($user?.role !== 'admin') {
 			if ($page.url.pathname.includes('/models') && !$user?.permissions?.workspace?.models) {
-				goto('/');
+				goto('/assistant');
 			} else if (
 				$page.url.pathname.includes('/knowledge') &&
 				!$user?.permissions?.workspace?.knowledge
 			) {
-				goto('/');
-			} else if (
-				$page.url.pathname.includes('/prompts') &&
-				!$user?.permissions?.workspace?.prompts
-			) {
-				goto('/');
+				goto('/assistant');
 			} else if ($page.url.pathname.includes('/tools') && !$user?.permissions?.workspace?.tools) {
-				goto('/');
+				goto('/assistant');
 			}
 		}
 
@@ -100,15 +95,6 @@
 							>
 								{$i18n.t('Knowledge')}
 							</a>
-						{/if}
-
-						{#if $user?.role === 'admin' || $user?.permissions?.workspace?.prompts}
-							<a
-								class="min-w-fit p-1.5 {$page.url.pathname.includes('/workspace/prompts')
-									? ''
-									: 'text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
-								href="/workspace/prompts">{$i18n.t('Prompts')}</a
-							>
 						{/if}
 
 						{#if $user?.role === 'admin' || $user?.permissions?.workspace?.tools}

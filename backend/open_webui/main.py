@@ -92,6 +92,9 @@ from open_webui.routers import (
     users,
     utils,
     scim,
+    # addedon
+    courses,
+    labs,
 )
 
 from open_webui.routers.retrieval import (
@@ -522,12 +525,12 @@ class SPAStaticFiles(StaticFiles):
 
 print(
     rf"""
- ██████╗ ██████╗ ███████╗███╗   ██╗    ██╗    ██╗███████╗██████╗ ██╗   ██╗██╗
-██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██║    ██║██╔════╝██╔══██╗██║   ██║██║
-██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██║ █╗ ██║█████╗  ██████╔╝██║   ██║██║
-██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║    ██║███╗██║██╔══╝  ██╔══██╗██║   ██║██║
-╚██████╔╝██║     ███████╗██║ ╚████║    ╚███╔███╔╝███████╗██████╔╝╚██████╔╝██║
- ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝     ╚══╝╚══╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝
+██╗    ██╗███████╗██████╗ ██╗   ██╗██╗
+██║    ██║██╔════╝██╔══██╗██║   ██║██║
+██║ █╗ ██║█████╗  ██████╔╝██║   ██║██║
+██║███╗██║██╔══╝  ██╔══██╗██║   ██║██║
+╚███╔███╔╝███████╗██████╔╝╚██████╔╝██║
+ ╚══╝╚══╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝
 
 
 v{VERSION} - building the best AI user interface.
@@ -1259,6 +1262,10 @@ app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
 app.include_router(auths.router, prefix="/api/v1/auths", tags=["auths"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
+# added on
+app.include_router(courses.router, prefix="/api/v1/courses", tags=["courses"])
+app.include_router(labs.router, prefix="/api/v1/labs", tags=["labs"])
+
 
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
 app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
@@ -1279,6 +1286,8 @@ app.include_router(
     evaluations.router, prefix="/api/v1/evaluations", tags=["evaluations"]
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
+
+
 
 # SCIM 2.0 API for identity management
 if SCIM_ENABLED:

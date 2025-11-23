@@ -518,7 +518,7 @@
 	id="sidebar-new-chat-button"
 	class="hidden"
 	on:click={() => {
-		goto('/');
+		goto('/assistant');
 		newChatHandler();
 	}}
 />
@@ -564,15 +564,15 @@
 					<Tooltip content={$i18n.t('New Chat')} placement="right">
 						<a
 							class=" cursor-pointer flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition group"
-							href="/"
+							href="/assistant"
 							draggable="false"
 							on:click={async (e) => {
-								e.stopImmediatePropagation();
-								e.preventDefault();
+      					e.stopImmediatePropagation();
+      					e.preventDefault();
 
-								goto('/');
-								newChatHandler();
-							}}
+      					goto('/assistant');
+      					newChatHandler();
+    					}}
 							aria-label={$i18n.t('New Chat')}
 						>
 							<div class=" self-center flex items-center justify-center size-9">
@@ -601,8 +601,8 @@
 						</button>
 					</Tooltip>
 				</div>
-
-				{#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
+				<!---  This was changed by adding if false && at the beginning--->
+				{#if false && ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
 					<div class="">
 						<Tooltip content={$i18n.t('Notes')} placement="right">
 							<a
@@ -625,8 +625,8 @@
 						</Tooltip>
 					</div>
 				{/if}
-
-				{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
+				<!---Before: {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools} --->
+				{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.tools}
 					<div class="">
 						<Tooltip content={$i18n.t('Workspace')} placement="right">
 							<a
@@ -720,9 +720,13 @@
 			>
 				<a
 					class="flex items-center rounded-xl size-8.5 h-full justify-center hover:bg-gray-100/50 dark:hover:bg-gray-850/50 transition no-drag-region"
-					href="/"
+					href="/assistant"
 					draggable="false"
-					on:click={newChatHandler}
+					on:click={(e) => {
+    				e.preventDefault();
+    				goto('/assistant');
+    				newChatHandler();
+  				}}
 				>
 					<img
 						crossorigin="anonymous"
@@ -732,11 +736,20 @@
 					/>
 				</a>
 
-				<a href="/" class="flex flex-1 px-1.5" on:click={newChatHandler}>
+				<a
+					href="/assistant"
+					class="flex flex-1 px-1.5"
+					on:click={(e) => {
+    				e.preventDefault();
+    				goto('/assistant');
+    				newChatHandler();
+  				}}
+				>
 					<div class=" self-center font-medium text-gray-850 dark:text-white font-primary">
 						{$WEBUI_NAME}
 					</div>
 				</a>
+
 				<Tooltip
 					content={$showSidebar ? $i18n.t('Close Sidebar') : $i18n.t('Open Sidebar')}
 					placement="bottom"
@@ -778,7 +791,7 @@
 						<a
 							id="sidebar-new-chat-button"
 							class="grow flex items-center space-x-3 rounded-2xl px-2.5 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition outline-none"
-							href="/"
+							href="/assistant"
 							draggable="false"
 							on:click={newChatHandler}
 							aria-label={$i18n.t('New Chat')}
@@ -812,8 +825,8 @@
 							</div>
 						</button>
 					</div>
-
-					{#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
+					<!---  This was changed by adding if false && at the beginning--->
+					{#if false && ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
 						<div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
 							<a
 								id="sidebar-notes-button"
@@ -833,8 +846,8 @@
 							</a>
 						</div>
 					{/if}
-
-					{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
+					<!---Before: {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools} --->
+					{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.tools}
 						<div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
 							<a
 								id="sidebar-workspace-button"
@@ -959,7 +972,7 @@
 					chevron={false}
 					on:change={async (e) => {
 						selectedFolder.set(null);
-						await goto('/');
+						await goto('/assistant');
 					}}
 					on:import={(e) => {
 						importChatHandler(e.detail);

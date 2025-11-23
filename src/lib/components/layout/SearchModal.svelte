@@ -26,7 +26,7 @@
 		{
 			label: 'Start a new conversation',
 			onClick: async () => {
-				await goto(`/${query ? `?q=${query}` : ''}`);
+				await goto(`/assistant${query ? `?q=${query}` : ''}`);
 				show = false;
 				onClose();
 			},
