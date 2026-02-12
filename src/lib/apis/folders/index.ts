@@ -4,7 +4,12 @@ type FolderForm = {
 	name?: string;
 	data?: Record<string, any>;
 	meta?: Record<string, any>;
+	// NEW: match backend
+	context_type?: 'general' | 'lab' | 'channel';
+	course_id?: string | null;
+	lab_id?: string | null;
 };
+
 
 export const createNewFolder = async (token: string, folderForm: FolderForm) => {
 	let error = null;
@@ -34,10 +39,24 @@ export const createNewFolder = async (token: string, folderForm: FolderForm) => 
 	return res;
 };
 
-export const getFolders = async (token: string = '') => {
+type FolderContext = {
+	context_type?: 'general' | 'lab' | 'channel';
+	course_id?: string | null;
+	lab_id?: string | null;
+};
+
+export const getFolders = async (token: string = '', context?: FolderContext) => {
 	let error = null;
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/folders/`, {
+	const params = new URLSearchParams();
+	if (context?.context_type) params.set('context_type', context.context_type);
+	if (context?.course_id) params.set('course_id', context.course_id);
+	if (context?.lab_id) params.set('lab_id', context.lab_id);
+
+	const qs = params.toString();
+	const url = `${WEBUI_API_BASE_URL}/folders/${qs ? `?${qs}` : ''}`;
+
+	const res = await fetch(url, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',

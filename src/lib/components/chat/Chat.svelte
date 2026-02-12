@@ -9,6 +9,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 
+
 	import { get, type Unsubscriber, type Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import { WEBUI_BASE_URL } from '$lib/constants';
@@ -39,11 +40,11 @@
 		functions,
 		selectedFolder,
 		pinnedChats,
-		showEmbeds
+		showEmbeds,
+		chatContext
 	} from '$lib/stores';
 
-	$: isLabsRoute = $page.url.pathname.startsWith('/labs');
-	$: sidebarVisible = $showSidebar && !isLabsRoute;
+	$: sidebarVisible = $showSidebar;
 
 	import {
 		convertMessagesToHistory,
@@ -97,6 +98,7 @@
 	import Image from '../common/Image.svelte';
 
 	export let chatIdProp = '';
+	export let labTitle: string | null = null;
 
 	let loading = true;
 
@@ -380,7 +382,7 @@
 				} else if (type === 'chat:title') {
 					chatTitle.set(data);
 					currentChatPage.set(1);
-					await chats.set(await getChatList(localStorage.token, $currentChatPage));
+					await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 				} else if (type === 'chat:tags') {
 					chat = await getChatById(localStorage.token, $chatId);
 					allTags.set(await getAllTags(localStorage.token));
@@ -1089,7 +1091,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 			}
 		}
 
@@ -1144,7 +1146,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 			}
 		}
 	};
@@ -1665,7 +1667,7 @@
 		);
 
 		currentChatPage.set(1);
-		chats.set(await getChatList(localStorage.token, $currentChatPage));
+		chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 	};
 
 	const getFeatures = () => {
@@ -2135,11 +2137,19 @@
 		let _chatId = $chatId;
 
 		if (!$temporaryChatEnabled) {
+			// Prefer the labTitle (when provided on /labs/...), else fall back to the normal "New Chat"
+			const baseTitle =
+				$page.url.pathname.startsWith('/labs') &&
+				labTitle &&
+				labTitle.trim().length > 0
+					? labTitle.trim()
+					: $i18n.t('New Chat');
+
 			chat = await createNewChat(
 				localStorage.token,
 				{
 					id: _chatId,
-					title: $i18n.t('New Chat'),
+					title: baseTitle,
 					models: selectedModels,
 					system: $settings.system ?? undefined,
 					params: params,
@@ -2148,17 +2158,27 @@
 					tags: [],
 					timestamp: Date.now()
 				},
-				$selectedFolder?.id
+				$selectedFolder?.id,
+				$chatContext
 			);
 
 			_chatId = chat.id;
 			await chatId.set(_chatId);
+			await chatTitle.set(baseTitle);
 
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			const isLabContext = $page.url.pathname.startsWith('/labs');
+
+			if (!isLabContext) {
+				// General chat: keep existing /c/<id> behavior
+				window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			} else {
+				// Lab chat: keep the /labs/... URL so you stay in the lab layout
+				window.history.replaceState(history.state, '', $page.url.pathname);
+			}
 
 			await tick();
 
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 			currentChatPage.set(1);
 
 			selectedFolder.set(null);
@@ -2182,7 +2202,7 @@
 					files: chatFiles
 				});
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 			}
 		}
 	};
@@ -2225,7 +2245,7 @@
 
 			if (res) {
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(localStorage.token, $currentChatPage, false, $chatContext));
 				await pinnedChats.set(await getPinnedChatList(localStorage.token));
 
 				toast.success($i18n.t('Chat moved successfully'));
@@ -2341,17 +2361,29 @@
 										messages: messages,
 										timestamp: Date.now()
 									},
-									null
+									null,
+									$chatContext
 								);
+
 
 								if (savedChat) {
 									temporaryChatEnabled.set(false);
 									chatId.set(savedChat.id);
-									chats.set(await getChatList(localStorage.token, $currentChatPage));
+									chats.set(
+										await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+									);
 
-									await goto(`/c/${savedChat.id}`);
+									const isLabContext = $page.url.pathname.startsWith('/labs');
+
+									if (!isLabContext) {
+										await goto(`/c/${savedChat.id}`);
+									} else {
+										// Stay on the lab URL; if you really want, you can keep the address bar in sync:
+										window.history.replaceState(history.state, '', $page.url.pathname);
+									}
 									toast.success($i18n.t('Conversation saved successfully'));
 								}
+
 							} catch (error) {
 								console.error('Error saving conversation:', error);
 								toast.error($i18n.t('Failed to save conversation'));

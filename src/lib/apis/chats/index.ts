@@ -1,8 +1,42 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
 import { getTimeRange } from '$lib/utils';
+// (Assuming ChatList / ChatResponse are imported elsewhere in the real file)
 
-export const createNewChat = async (token: string, chat: object, folderId: string | null) => {
+/**
+ * Context for a chat "world" (general, lab, channel).
+ */
+export type ChatContext = {
+	context_type?: 'general' | 'lab' | 'channel';
+	course_id?: string | null;
+	lab_id?: string | null;
+};
+
+/**
+ * Filter type for list endpoints that can be context-aware.
+ * Currently just context fields, but you can extend it later.
+ */
+export type ChatListFilter = {
+	context_type?: string;
+	course_id?: string;
+	lab_id?: string;
+};
+
+export const createNewChat = async (
+	token: string,
+	chat: object,
+	folderId: string | null,
+	context?: ChatContext
+) => {
 	let error = null;
+
+	const payload: any = {
+		chat: chat,
+		folder_id: folderId ?? null
+	};
+
+	if (context?.context_type) payload.context_type = context.context_type;
+	if (context?.course_id) payload.course_id = context.course_id;
+	if (context?.lab_id) payload.lab_id = context.lab_id;
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/new`, {
 		method: 'POST',
@@ -11,10 +45,7 @@ export const createNewChat = async (token: string, chat: object, folderId: strin
 			'Content-Type': 'application/json',
 			authorization: `Bearer ${token}`
 		},
-		body: JSON.stringify({
-			chat: chat,
-			folder_id: folderId ?? null
-		})
+		body: JSON.stringify(payload)
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
@@ -72,9 +103,23 @@ export const importChat = async (
 	pinned?: boolean,
 	folderId?: string | null,
 	createdAt: number | null = null,
-	updatedAt: number | null = null
+	updatedAt: number | null = null,
+	context?: ChatContext
 ) => {
 	let error = null;
+
+	const payload: any = {
+		chat: chat,
+		meta: meta ?? {},
+		pinned: pinned,
+		folder_id: folderId,
+		created_at: createdAt ?? null,
+		updated_at: updatedAt ?? null
+	};
+
+	if (context?.context_type) payload.context_type = context.context_type;
+	if (context?.course_id) payload.course_id = context.course_id;
+	if (context?.lab_id) payload.lab_id = context.lab_id;
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/import`, {
 		method: 'POST',
@@ -83,14 +128,7 @@ export const importChat = async (
 			'Content-Type': 'application/json',
 			authorization: `Bearer ${token}`
 		},
-		body: JSON.stringify({
-			chat: chat,
-			meta: meta ?? {},
-			pinned: pinned,
-			folder_id: folderId,
-			created_at: createdAt ?? null,
-			updated_at: updatedAt ?? null
-		})
+		body: JSON.stringify(payload)
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
@@ -110,62 +148,59 @@ export const importChat = async (
 };
 
 export const getChatList = async (
-	token: string = '',
+	token: string,
 	page: number | null = null,
-	include_folders: boolean = false
-) => {
-	let error = null;
-	const searchParams = new URLSearchParams();
+	include_folders = false,
+	context?: ChatContext
+): Promise<ChatList[]> => {
+	try {
+		const searchParams = new URLSearchParams();
 
-	if (page !== null) {
-		searchParams.append('page', `${page}`);
-	}
+		if (page !== null) searchParams.append('page', String(page));
+		if (include_folders) searchParams.append('include_folders', 'true');
 
-	if (include_folders) {
-		searchParams.append('include_folders', 'true');
-	}
+		if (context?.context_type) searchParams.append('context_type', context.context_type);
+		if (context?.course_id) searchParams.append('course_id', context.course_id);
+		if (context?.lab_id) searchParams.append('lab_id', context.lab_id);
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/?${searchParams.toString()}`, {
-		method: 'GET',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.then((json) => {
-			return json;
-		})
-		.catch((err) => {
-			error = err;
-			console.error(err);
-			return null;
+		const res = await fetch(`${WEBUI_API_BASE_URL}/chats/?${searchParams.toString()}`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			}
 		});
 
-	if (error) {
+		if (!res.ok) {
+			const error = await res.json();
+			throw error;
+		}
+
+		const data = await res.json();
+
+		return data.map((chat: ChatResponse) => ({
+			id: chat.id,
+			title: chat.title,
+			chat_folder_id: chat.chat_folder_id,
+			created_at: chat.created_at,
+			updated_at: chat.updated_at,
+			is_pinned: chat.is_pinned ?? false
+		}));
+	} catch (error) {
+		console.error(error);
 		throw error;
 	}
-
-	return res.map((chat) => ({
-		...chat,
-		time_range: getTimeRange(chat.updated_at)
-	}));
 };
 
 export const getChatListByUserId = async (
 	token: string = '',
 	userId: string,
 	page: number = 1,
-	filter?: object
+	filter?: ChatListFilter
 ) => {
 	let error = null;
 
 	const searchParams = new URLSearchParams();
-
 	searchParams.append('page', `${page}`);
 
 	if (filter) {
@@ -213,7 +248,7 @@ export const getChatListByUserId = async (
 export const getArchivedChatList = async (
 	token: string = '',
 	page: number = 1,
-	filter?: object
+	filter?: ChatListFilter
 ) => {
 	let error = null;
 
@@ -290,12 +325,21 @@ export const getAllChats = async (token: string) => {
 	return res;
 };
 
-export const getChatListBySearchText = async (token: string, text: string, page: number = 1) => {
+export const getChatListBySearchText = async (
+	token: string,
+	text: string,
+	page: number = 1,
+	context?: ChatContext
+) => {
 	let error = null;
 
 	const searchParams = new URLSearchParams();
 	searchParams.append('text', text);
 	searchParams.append('page', `${page}`);
+
+	if (context?.context_type) searchParams.append('context_type', context.context_type);
+	if (context?.course_id) searchParams.append('course_id', context.course_id);
+	if (context?.lab_id) searchParams.append('lab_id', context.lab_id);
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/search?${searchParams.toString()}`, {
 		method: 'GET',
@@ -1079,6 +1123,7 @@ export const deleteTagById = async (token: string, id: string, tagName: string) 
 
 	return res;
 };
+
 export const deleteTagsById = async (token: string, id: string) => {
 	let error = null;
 

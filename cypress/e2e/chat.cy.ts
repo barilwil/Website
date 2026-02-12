@@ -1,6 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../support/index.d.ts" />
 
+/*
+* This Cypress E2E test simulates real user interactions
+* to verify chat, model selection, sharing, and image
+* generation flows function correctly across the
+* frontend and backend.
+* */
+
+
 // These tests run through the chat flow.
 describe('Settings', () => {
 	// Wait for 2 seconds after all tests to fix an issue with Cypress's video recording missing the last few frames

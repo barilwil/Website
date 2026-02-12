@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from open_webui.models.labs import Labs, LabForm, LabUpdateForm, LabModel
-from open_webui.models.channels import Channels, ChannelForm
+from open_webui.models.channels import Channels
 from open_webui.models.knowledge import Knowledges, KnowledgeForm
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user, get_admin_user
+
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
@@ -23,6 +24,9 @@ class LabCreateForm(BaseModel):
     name: str
     description: Optional[str] = None
     enabled: Optional[bool] = True
+
+class LabKnowledgeLinkForm(BaseModel):
+    knowledge_id: str
 
 
 ############################
@@ -55,24 +59,11 @@ async def get_lab_by_id(id: str, user=Depends(get_verified_user)):
 @router.post("/create", response_model=Optional[LabModel])
 async def create_new_lab(form_data: LabCreateForm, user=Depends(get_admin_user)):
     """
-    Create a Lab + its own Channel + its own Knowledge Base.
+    Create a Lab + its own Knowledge Base.
+    Channels are per-course, not per-lab.
     """
     try:
-        # Channel
-        channel_form = ChannelForm(
-            name=f"{form_data.course_id} - {form_data.name}",
-            description=form_data.description or "",
-            data=None,
-            meta={"type": "lab"},
-            access_control=None,
-        )
-        channel = Channels.insert_new_channel(
-            type="lab",
-            form_data=channel_form,
-            user_id=user.id,
-        )
-
-        # Knowledge base
+        # Knowledge base (still per-lab)
         knowledge_form = KnowledgeForm(
             name=f"{form_data.course_id} - {form_data.name} Resources",
             description=form_data.description or "Lab-specific resources",
@@ -81,13 +72,12 @@ async def create_new_lab(form_data: LabCreateForm, user=Depends(get_admin_user))
         )
         knowledge = Knowledges.insert_new_knowledge(user.id, knowledge_form)
 
-        # Lab record
         lab_form = LabForm(
             course_id=form_data.course_id,
             name=form_data.name,
             description=form_data.description,
             enabled=form_data.enabled if form_data.enabled is not None else True,
-            channel_id=channel.id if channel else None,
+            channel_id=None,  # labs don't own channels anymore
             knowledge_id=knowledge.id if knowledge else None,
             meta={},
         )
@@ -110,6 +100,16 @@ async def create_new_lab(form_data: LabCreateForm, user=Depends(get_admin_user))
         )
 
 
+@router.post("/new", response_model=Optional[LabModel])
+async def create_new_lab_alias(
+        form_data: LabCreateForm, user=Depends(get_admin_user)
+):
+    """
+    Backwards-compatible alias for creating a lab.
+    Uses the same logic as /create.
+    """
+    return await create_new_lab(form_data=form_data, user=user)
+
 @router.post("/id/{id}/update", response_model=Optional[LabModel])
 async def update_lab_by_id(
         id: str, form_data: LabUpdateForm, user=Depends(get_admin_user)
@@ -131,7 +131,9 @@ async def update_lab_by_id(
             detail=ERROR_MESSAGES.DEFAULT(e),
         )
 
-@router.delete("/labs/id/{id}/delete", response_model=bool)
+
+
+@router.delete("/id/{id}/delete", response_model=bool)
 async def delete_lab_by_id(id: str, user=Depends(get_admin_user)):
     lab = Labs.get_lab_by_id(id)
     if not lab:
@@ -141,16 +143,14 @@ async def delete_lab_by_id(id: str, user=Depends(get_admin_user)):
         )
 
     try:
-        # Delete channel
+        # Legacy cleanup: if an old lab still has its own channel, delete it
         if lab.channel_id:
             Channels.delete_channel_by_id(lab.channel_id)
 
-        # Delete knowledge base (and its vector data if you want to copy the
-        # delete logic from the knowledge router)
+        # Delete attached knowledge, if any
         if lab.knowledge_id:
             Knowledges.delete_knowledge_by_id(lab.knowledge_id)
 
-        # Finally delete lab record
         Labs.delete_lab_by_id(id)
         return True
     except Exception as e:

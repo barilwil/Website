@@ -8,7 +8,9 @@
 		settings,
 		scrollPaginationEnabled,
 		currentChatPage,
-		pinnedChats
+		chatBasePath,
+		pinnedChats,
+		chatContext
 	} from '$lib/stores';
 
 	import {
@@ -22,12 +24,14 @@
 	import { getImportOrigin, convertOpenAIChats } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { toast } from 'svelte-sonner';
 	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
 
 	const i18n = getContext('i18n');
 
 	export let saveSettings: Function;
+
 
 	// Chats
 	let importFiles;
@@ -72,16 +76,28 @@
 					false,
 					null,
 					chat?.created_at ?? null,
-					chat?.updated_at ?? null
+					chat?.updated_at ?? null,
+					$chatContext
 				);
 			} else {
 				// Legacy format
-				await importChat(localStorage.token, chat, {}, false, null);
+				await importChat(
+					localStorage.token,
+					chat,
+					{},
+					false,
+					null,
+					null,
+					null,
+					$chatContext
+				);
 			}
 		}
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(
+			await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+		);
 		pinnedChats.set(await getPinnedChatList(localStorage.token));
 		scrollPaginationEnabled.set(true);
 	};
@@ -94,7 +110,7 @@
 	};
 
 	const archiveAllChatsHandler = async () => {
-		await goto('/assistant');
+		await goto($chatBasePath);
 		await archiveAllChats(localStorage.token).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -106,19 +122,23 @@
 	};
 
 	const deleteAllChatsHandler = async () => {
-		await goto('/assistant');
+		await goto($chatBasePath);
 		await deleteAllChats(localStorage.token).catch((error) => {
 			toast.error(`${error}`);
 		});
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(
+			await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+		);
 		scrollPaginationEnabled.set(true);
 	};
 
 	const handleArchivedChatsChange = async () => {
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(
+			await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+		);
 
 		scrollPaginationEnabled.set(true);
 	};

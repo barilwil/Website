@@ -37,27 +37,42 @@ router = APIRouter()
 @router.get("/", response_model=list[ChatTitleIdResponse])
 @router.get("/list", response_model=list[ChatTitleIdResponse])
 def get_session_user_chat_list(
-    user=Depends(get_verified_user),
-    page: Optional[int] = None,
-    include_folders: Optional[bool] = False,
+        user=Depends(get_verified_user),
+        page: Optional[int] = None,
+        include_folders: Optional[bool] = False,
+        context_type: Optional[str] = None,
+        course_id: Optional[str] = None,
+        lab_id: Optional[str] = None,
 ):
+
     try:
         if page is not None:
             limit = 60
             skip = (page - 1) * limit
 
             return Chats.get_chat_title_id_list_by_user_id(
-                user.id, include_folders=include_folders, skip=skip, limit=limit
+                user.id,
+                include_folders=include_folders,
+                skip=skip,
+                limit=limit,
+                context_type=context_type,
+                course_id=course_id,
+                lab_id=lab_id,
             )
         else:
             return Chats.get_chat_title_id_list_by_user_id(
-                user.id, include_folders=include_folders
+                user.id,
+                include_folders=include_folders,
+                context_type=context_type,
+                course_id=course_id,
+                lab_id=lab_id,
             )
+
     except Exception as e:
-        log.exception(e)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.DEFAULT()
-        )
+            log.exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.DEFAULT()
+            )
 
 
 ############################
@@ -171,8 +186,14 @@ async def import_chat(form_data: ChatImportForm, user=Depends(get_verified_user)
 
 @router.get("/search", response_model=list[ChatTitleIdResponse])
 def search_user_chats(
-    text: str, page: Optional[int] = None, user=Depends(get_verified_user)
+        text: str,
+        page: Optional[int] = None,
+        context_type: Optional[str] = None,
+        course_id: Optional[str] = None,
+        lab_id: Optional[str] = None,
+        user=Depends(get_verified_user),
 ):
+
     if page is None:
         page = 1
 
@@ -182,11 +203,17 @@ def search_user_chats(
     chat_list = [
         ChatTitleIdResponse(**chat.model_dump())
         for chat in Chats.get_chats_by_user_id_and_search_text(
-            user.id, text, skip=skip, limit=limit
+            user.id,
+            text,
+            skip=skip,
+            limit=limit,
+            context_type=context_type,
+            course_id=course_id,
+            lab_id=lab_id,
         )
     ]
 
-    # Delete tag if no chat is found
+# Delete tag if no chat is found
     words = text.strip().split(" ")
     if page == 1 and len(words) == 1 and words[0].startswith("tag:"):
         tag_id = words[0].replace("tag:", "")

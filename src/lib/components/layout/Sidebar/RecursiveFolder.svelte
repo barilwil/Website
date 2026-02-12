@@ -9,9 +9,12 @@
 	const { saveAs } = fileSaver;
 
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { toast } from 'svelte-sonner';
+	import { chatBasePath } from '$lib/stores';
 
-	import { chatId, mobile, selectedFolder, showSidebar } from '$lib/stores';
+	import { chatId, mobile, selectedFolder, showSidebar, chatContext } from '$lib/stores';
+
 
 	import {
 		deleteFolderById,
@@ -159,12 +162,14 @@
 										false,
 										null,
 										item?.created_at ?? null,
-										item?.updated_at ?? null
+										item?.updated_at ?? null,
+										$chatContext
 									).catch((error) => {
 										toast.error(`${error}`);
 										return null;
 									});
 								}
+
 
 								// Move the chat
 								const res = await updateChatFolderIdById(
@@ -488,7 +493,7 @@
 					}
 
 					clickTimer = setTimeout(async () => {
-						await goto('/assistant');
+						await goto($chatBasePath);
 
 						const folder = await getFolderById(localStorage.token, folderId).catch((error) => {
 							toast.error(`${error}`);

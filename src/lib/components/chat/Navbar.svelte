@@ -12,9 +12,12 @@
 		showArchivedChats,
 		showControls,
 		showSidebar,
+		chatBasePath,
 		temporaryChatEnabled,
 		user
 	} from '$lib/stores';
+
+
 
 	import { slide } from 'svelte/transition';
 	import { page } from '$app/stores';
@@ -124,7 +127,7 @@
 											await temporaryChatEnabled.set(!$temporaryChatEnabled);
 										}
 
-										await goto('/assistant');
+										await goto($chatBasePath);
 
 										// add 'temporary-chat=true' to the URL
 										if ($temporaryChatEnabled) {

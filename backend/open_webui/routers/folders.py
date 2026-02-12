@@ -25,7 +25,16 @@ from open_webui.env import SRC_LOG_LEVELS
 from open_webui.constants import ERROR_MESSAGES
 
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+    Request,
+    Query,
+)
 from fastapi.responses import FileResponse, StreamingResponse
 
 
@@ -46,8 +55,18 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[FolderNameIdResponse])
-async def get_folders(user=Depends(get_verified_user)):
-    folders = Folders.get_folders_by_user_id(user.id)
+async def get_folders(
+        context_type: Optional[str] = Query(default=None),
+        course_id: Optional[str] = Query(default=None),
+        lab_id: Optional[str] = Query(default=None),
+        user=Depends(get_verified_user),
+):
+    folders = Folders.get_folders_by_user_id(
+        user.id,
+        context_type=context_type,
+        course_id=course_id,
+        lab_id=lab_id,
+    )
 
     # Verify folder data integrity
     for folder in folders:

@@ -2,6 +2,12 @@
 /// <reference path="../support/index.d.ts" />
 import { adminUser } from '../support/e2e';
 
+/*
+This Cypress test performs smoke testing across all settings pages to ensure
+an admin user can open and save each configuration panel without runtime
+or backend errors.
+ */
+
 // These tests run through the various settings pages, ensuring that the user can interact with them as expected
 describe('Settings', () => {
 	// Wait for 2 seconds after all tests to fix an issue with Cypress's video recording missing the last few frames

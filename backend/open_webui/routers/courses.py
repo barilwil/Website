@@ -10,6 +10,10 @@ from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user, get_admin_user
 
+from open_webui.models.channels import Channels, ChannelForm
+from open_webui.models.knowledge import Knowledges
+
+
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
@@ -133,18 +137,10 @@ async def list_labs_for_course(id: str, user=Depends(get_verified_user)):
 # Admin-only
 ############################
 
-
 @router.post("/create", response_model=Optional[CourseModel])
 async def create_new_course(form_data: CourseForm, user=Depends(get_admin_user)):
     """
-    Create a Course AND a corresponding Group.
-
-    The group:
-    - name = course.code (e.g. ECEN 403)
-    - description = course.name
-    - meta.course_id = course.id
-
-    You can then assign students to this group in Admin → Users → Groups.
+    Create a Course, its Group, and its course-level Channel.
     """
     try:
         course = Courses.insert_new_course(user.id, form_data)
@@ -154,7 +150,7 @@ async def create_new_course(form_data: CourseForm, user=Depends(get_admin_user))
                 detail=ERROR_MESSAGES.DEFAULT("Error creating course"),
             )
 
-        # Create matching Group
+        # 1) Course Group (enrollment)
         group_form = GroupForm(
             name=course.code,
             description=course.name or "",
@@ -163,10 +159,47 @@ async def create_new_course(form_data: CourseForm, user=Depends(get_admin_user))
         )
         group = Groups.insert_new_group(user.id, group_form)
 
-        # Optionally: store group_id in course.meta for reference
+        # 2) Course Channel (one per course)
+        # Make the channel readable/writable ONLY by members of the course group.
+        channel_access_control = None
+
         if group:
-            meta = course.meta or {}
+            channel_access_control = {
+                "read": {
+                    # Only users in this group + (optionally) explicit users
+                    "group_ids": [group.id],
+                    # you *could* list extra users here, but it's not required
+                    "user_ids": [],
+                },
+                "write": {
+                    # Only users in this group can post
+                    "group_ids": [group.id],
+                    "user_ids": [],
+                },
+            }
+
+        channel_form = ChannelForm(
+            name=course.code,
+            description=course.name or "",
+            data=None,
+            meta={"type": "course", "course_id": course.id},
+            access_control=channel_access_control,
+        )
+
+        channel = Channels.insert_new_channel(
+            type="course",
+            form_data=channel_form,
+            user_id=user.id,
+        )
+
+        # 3) Save references in course.meta
+        meta = course.meta or {}
+        if group:
             meta["group_id"] = group.id
+        if channel:
+            meta["channel_id"] = channel.id
+
+        if meta:
             course = Courses.update_course_by_id(
                 course.id,
                 CourseUpdateForm(meta=meta),
@@ -183,11 +216,45 @@ async def create_new_course(form_data: CourseForm, user=Depends(get_admin_user))
         )
 
 
-@router.post("/id/{id}/update", response_model=Optional[CourseModel])
-async def update_course_by_id(
-        id: str, form_data: CourseUpdateForm, user=Depends(get_admin_user)
-):
+@router.delete("/id/{id}/delete", response_model=bool)
+async def delete_course_by_id(id: str, user=Depends(get_admin_user)):
+    course = Courses.get_course_by_id(id=id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ERROR_MESSAGES.NOT_FOUND,
+        )
     try:
+        # 1) Delete all labs (and their channels/knowledge) for this course
+        labs = Labs.get_labs_by_course_id(course_id=id)
+        for lab in labs:
+            if lab.channel_id:
+                Channels.delete_channel_by_id(lab.channel_id)
+            if lab.knowledge_id:
+                Knowledges.delete_knowledge_by_id(lab.knowledge_id)
+            Labs.delete_lab_by_id(lab.id)
+
+        # 2) Delete a course-level channel, if you stored one in course.meta["channel_id"]
+        channel_id = (course.meta or {}).get("channel_id")
+        if channel_id:
+            Channels.delete_channel_by_id(channel_id)
+
+        # 3) Delete any Group whose meta.course_id == this course id
+        for group in Groups.get_groups():
+            if group.meta and group.meta.get("course_id") == id:
+                Groups.delete_group_by_id(group.id)
+
+        # 4) Finally, delete the course itself
+        Courses.delete_course_by_id(id)
+        return True
+
+    except Exception as e:
+        log.exception(f"Error deleting course {id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.DEFAULT(e),
+        )
+
         course = Courses.update_course_by_id(id, form_data)
         if course:
             return course

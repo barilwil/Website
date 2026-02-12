@@ -131,6 +131,14 @@ class LabTable:
             )
             return [LabModel.model_validate(r) for r in rows]
 
+
+    def get_lab_by_knowledge_id(self, knowledge_id: str) -> Optional[LabModel]:
+        """Return the Lab that owns the given knowledge_id, if any."""
+        with get_db() as db:
+            row = db.query(Lab).filter_by(knowledge_id=knowledge_id).first()
+            return LabModel.model_validate(row) if row else None
+
+
     def update_lab_by_id(self, id: str, form_data: LabUpdateForm) -> Optional[LabModel]:
         with get_db() as db:
             data = form_data.model_dump(exclude_none=True)

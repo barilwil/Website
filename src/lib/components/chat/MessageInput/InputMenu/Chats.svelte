@@ -8,7 +8,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Loader from '$lib/components/common/Loader.svelte';
-	import { chatId } from '$lib/stores';
+	import { chatId, chatContext } from '$lib/stores';
 
 	const i18n = getContext('i18n');
 
@@ -31,7 +31,7 @@
 
 	const getItemsPage = async () => {
 		itemsLoading = true;
-		let res = await getChatList(localStorage.token, page, true).catch(() => {
+		let res = await getChatList(localStorage.token, page, true, $chatContext).catch(() => {
 			return [];
 		});
 

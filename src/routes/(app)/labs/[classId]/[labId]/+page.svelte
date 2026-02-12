@@ -4,42 +4,31 @@
 	import { toast } from 'svelte-sonner';
 
 	import Chat from '$lib/components/chat/Chat.svelte';
-	import LabResources from '$lib/components/labs/LabResources.svelte';
 	import { getLabById } from '$lib/apis/labs';
+	import { chatBasePath, chatContext } from '$lib/stores';
 
 	let lab: any = null;
-	let loadingLab = true;
 
 	$: classId = $page.params.classId;
 	$: labId = $page.params.labId;
 
 	onMount(async () => {
+		// remember that this page is the current chat context
+		chatBasePath.set($page.url.pathname);
+		chatContext.set({
+			context_type: 'lab',
+			course_id: classId,
+			lab_id: labId
+		});
+
 		try {
 			lab = await getLabById(localStorage.token, labId);
 		} catch (e) {
 			console.error(e);
 			toast.error(`${e}`);
-		} finally {
-			loadingLab = false;
 		}
 	});
 </script>
 
-<!-- Same navbar / layout as General Assistant, Chat owns the top bar -->
-<div class="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)]">
-	<!-- Main chat area -->
-	<div class="flex-1 min-w-0">
-		<Chat />
-	</div>
-
-	<!-- Lab materials panel -->
-	{#if !loadingLab && lab?.knowledge_id}
-		<div class="hidden lg:flex">
-			<LabResources
-				labName={`${lab?.name ?? ''}`}
-				description={lab?.description}
-				knowledgeId={lab.knowledge_id}
-			/>
-		</div>
-	{/if}
-</div>
+<!-- Exactly like /assistant, but with a lab-specific title -->
+<Chat labTitle={`${classId?.toUpperCase?.() ?? classId} • ${lab?.name ?? ''}`} />

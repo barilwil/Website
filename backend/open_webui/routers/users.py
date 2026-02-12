@@ -146,6 +146,11 @@ async def get_user_permissisions(request: Request, user=Depends(get_verified_use
 # User Default Permissions
 ############################
 class WorkspacePermissions(BaseModel):
+    # New workspace areas
+    my_uploads: bool = True
+    lab_resources: bool = False
+
+    # Existing ones
     models: bool = False
     knowledge: bool = False
     prompts: bool = False

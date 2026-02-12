@@ -9,7 +9,8 @@
 		models,
 		prompts,
 		knowledge,
-		tools
+		tools,
+		chatContext
 	} from '$lib/stores';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -21,17 +22,25 @@
 	let loaded = false;
 
 	onMount(async () => {
+		// Redirect non-admins away from restricted Workspace areas
 		if ($user?.role !== 'admin') {
-			if ($page.url.pathname.includes('/models') && !$user?.permissions?.workspace?.models) {
+			// Knowledge is admin-only now: always block students
+			if ($page.url.pathname.includes('/workspace/knowledge')) {
 				goto('/assistant');
 			} else if (
-				$page.url.pathname.includes('/knowledge') &&
-				!$user?.permissions?.workspace?.knowledge
+				$page.url.pathname.includes('/workspace/models') &&
+				!$user?.permissions?.workspace?.models
 			) {
 				goto('/assistant');
-			} else if ($page.url.pathname.includes('/tools') && !$user?.permissions?.workspace?.tools) {
+			} else if (
+				$page.url.pathname.includes('/workspace/tools') &&
+				!$user?.permissions?.workspace?.tools
+			) {
+				goto('/assistant');
+			} else if ($page.url.pathname.includes('/workspace/functions') && $user?.role !== 'admin') {
 				goto('/assistant');
 			}
+			// NOTE: Lab Resources & My Uploads are allowed for students; no redirects here.
 		}
 
 		loaded = true;
@@ -86,7 +95,8 @@
 							>
 						{/if}
 
-						{#if $user?.role === 'admin' || $user?.permissions?.workspace?.knowledge}
+						<!-- Knowledge is admin-only (students never see this tab) -->
+						{#if $user?.role === 'admin'}
 							<a
 								class="min-w-fit p-1.5 {$page.url.pathname.includes('/workspace/knowledge')
 									? ''
@@ -107,6 +117,39 @@
 								{$i18n.t('Tools')}
 							</a>
 						{/if}
+						<!-- Functions (admin-only) -->
+						<!---
+						{#if $user?.role === 'admin'}
+							<a
+								class="min-w-fit p-1.5 {$page.url.pathname.includes('/workspace/functions')
+									? ''
+									: 'text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
+								href="/workspace/functions"
+							>
+								{$i18n.t('Functions')}
+							</a>
+						{/if}
+						--->
+						{#if $user?.role === 'admin' || $chatContext?.context_type === 'lab'}
+							<a
+								class="min-w-fit p-1.5 {$page.url.pathname.includes('/workspace/lab-resources')
+									? ''
+									: 'text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
+								href="/workspace/lab-resources"
+							>
+								{$i18n.t('Lab Resources')}
+							</a>
+						{/if}
+
+						<!-- My Uploads (visible to both roles) -->
+						<a
+							class="min-w-fit p-1.5 {$page.url.pathname.includes('/workspace/my-uploads')
+								? ''
+								: 'text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
+							href="/workspace/my-uploads"
+						>
+							{$i18n.t('My Uploads')}
+						</a>
 					</div>
 				</div>
 

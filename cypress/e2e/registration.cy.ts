@@ -2,6 +2,12 @@
 /// <reference path="../support/index.d.ts" />
 import { adminUser } from '../support/e2e';
 
+/*
+This Cypress test validates end-to-end user registration and authentication,
+ensuring new users default to a pending role and admins can successfully
+log in and access the application.
+ */
+
 // These tests assume the following defaults:
 // 1. No users exist in the database or that the test admin user is an admin
 // 2. Language is set to English

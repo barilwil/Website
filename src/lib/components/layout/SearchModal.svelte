@@ -12,12 +12,14 @@
 	import calendar from 'dayjs/plugin/calendar';
 	import Loader from '../common/Loader.svelte';
 	import { createMessagesList } from '$lib/utils';
-	import { config, user } from '$lib/stores';
+	import { config, user, chatBasePath, chatContext } from '$lib/stores';
 	import Messages from '../chat/Messages.svelte';
+
 	import { goto } from '$app/navigation';
 	import PencilSquare from '../icons/PencilSquare.svelte';
 	import PageEdit from '../icons/PageEdit.svelte';
 	dayjs.extend(calendar);
+
 
 	export let show = false;
 	export let onClose = () => {};
@@ -26,7 +28,8 @@
 		{
 			label: 'Start a new conversation',
 			onClick: async () => {
-				await goto(`/assistant${query ? `?q=${query}` : ''}`);
+				const searchPart = query ? `?q=${encodeURIComponent(query)}` : '';
+				await goto(`${$chatBasePath}${searchPart}`);
 				show = false;
 				onClose();
 			},
@@ -35,7 +38,7 @@
 	];
 
 	let query = '';
-	let page = 1;
+	let currentPage = 1;
 
 	let chatList = null;
 
@@ -119,13 +122,19 @@
 			clearTimeout(searchDebounceTimeout);
 		}
 
-		page = 1;
+		currentPage = 1;
 		chatList = null;
 		if (query === '') {
-			chatList = await getChatList(localStorage.token, page);
+			chatList = await getChatList(localStorage.token, currentPage, false, $chatContext);
 		} else {
 			searchDebounceTimeout = setTimeout(async () => {
-				chatList = await getChatListBySearchText(localStorage.token, query, page);
+				chatList = await getChatListBySearchText(
+					localStorage.token,
+					query,
+					currentPage,
+					$chatContext
+				);
+
 
 				if ((chatList ?? []).length === 0) {
 					allChatsLoaded = true;
@@ -149,14 +158,24 @@
 
 	const loadMoreChats = async () => {
 		chatListLoading = true;
-		page += 1;
+		currentPage += 1;
 
 		let newChatList = [];
 
 		if (query) {
-			newChatList = await getChatListBySearchText(localStorage.token, query, page);
+			newChatList = await getChatListBySearchText(
+				localStorage.token,
+				query,
+				currentPage,
+				$chatContext
+			);
 		} else {
-			newChatList = await getChatList(localStorage.token, page);
+			newChatList = await getChatList(
+				localStorage.token,
+				currentPage,
+				false,
+				$chatContext
+			);
 		}
 
 		// once the bottom of the list has been reached (no results) there is no need to continue querying

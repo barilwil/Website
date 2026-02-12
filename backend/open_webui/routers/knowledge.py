@@ -27,12 +27,26 @@ from open_webui.utils.access_control import has_access, has_permission
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.config import BYPASS_ADMIN_ACCESS_CONTROL
 from open_webui.models.models import Models, ModelForm
-
+from open_webui.models.labs import Labs
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 router = APIRouter()
+
+def _ensure_lab_knowledge_admin_only(knowledge_id: str, user) -> None:
+    """
+    If the given knowledge base is attached to a Lab, only admins are allowed
+    to modify it. This is used by write endpoints (update, file add/remove,
+    delete, reset, batch add).
+    """
+    attached_lab = Labs.get_lab_by_knowledge_id(knowledge_id)
+    if attached_lab and getattr(user, "role", None) != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
+        )
+
 
 ############################
 # getKnowledgeBases
@@ -297,10 +311,10 @@ async def get_knowledge_by_id(id: str, user=Depends(get_verified_user)):
 
 @router.post("/{id}/update", response_model=Optional[KnowledgeFilesResponse])
 async def update_knowledge_by_id(
-    request: Request,
-    id: str,
-    form_data: KnowledgeForm,
-    user=Depends(get_verified_user),
+        request: Request,
+        id: str,
+        form_data: KnowledgeForm,
+        user=Depends(get_verified_user),
 ):
     knowledge = Knowledges.get_knowledge_by_id(id=id)
     if not knowledge:
@@ -308,6 +322,7 @@ async def update_knowledge_by_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+    _ensure_lab_knowledge_admin_only(id, user)
     # Is the user the original creator, in a group with write access, or an admin
     if (
         knowledge.user_id != user.id
@@ -370,6 +385,7 @@ def add_file_to_knowledge_by_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+    _ensure_lab_knowledge_admin_only(id, user)
 
     if (
         knowledge.user_id != user.id
@@ -454,6 +470,7 @@ def update_file_from_knowledge_by_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+    _ensure_lab_knowledge_admin_only(id, user)
 
     if (
         knowledge.user_id != user.id
@@ -526,6 +543,8 @@ def remove_file_from_knowledge_by_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+
+    _ensure_lab_knowledge_admin_only(id, user)
 
     if (
         knowledge.user_id != user.id
@@ -615,6 +634,7 @@ async def delete_knowledge_by_id(id: str, user=Depends(get_verified_user)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+    _ensure_lab_knowledge_admin_only(id, user)
 
     if (
         knowledge.user_id != user.id
@@ -679,6 +699,8 @@ async def reset_knowledge_by_id(id: str, user=Depends(get_verified_user)):
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
+    _ensure_lab_knowledge_admin_only(id, user)
+
     if (
         knowledge.user_id != user.id
         and not has_access(user.id, "write", knowledge.access_control)
@@ -721,6 +743,7 @@ def add_files_to_knowledge_batch(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+    _ensure_lab_knowledge_admin_only(id, user)
 
     if (
         knowledge.user_id != user.id

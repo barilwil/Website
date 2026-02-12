@@ -7,7 +7,8 @@
 		user as _user,
 		mobile,
 		currentChatPage,
-		temporaryChatEnabled
+		temporaryChatEnabled,
+		chatContext
 	} from '$lib/stores';
 	import { tick, getContext, onMount, createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
@@ -109,7 +110,10 @@
 			});
 
 			currentChatPage.set(1);
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			await chats.set(
+				await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+			);
+
 		}
 	};
 

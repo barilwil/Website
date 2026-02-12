@@ -22,6 +22,7 @@ import aiohttp
 import anyio.to_thread
 import requests
 from redis import Redis
+from fastapi import HTTPException
 
 
 from fastapi import (
@@ -41,6 +42,8 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from open_webui.env import STATIC_DIR
+
 
 from starlette_compress import CompressMiddleware
 
@@ -49,6 +52,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response, StreamingResponse
 from starlette.datastructures import Headers
+from starlette.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware
 
 from starsessions import (
     SessionMiddleware as StarSessionsMiddleware,
@@ -611,6 +616,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+
+
+# Serve static assets (favicons, user.png, etc.)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+static_app = StaticFiles(directory=str(STATIC_DIR))
+
+static_app = CORSMiddleware(
+    static_app,
+    allow_origins=CORS_ALLOW_ORIGIN,
+    allow_credentials=True,
+    allow_methods=["GET", "HEAD", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", static_app, name="static")
+
+
 # For Open WebUI OIDC/OAuth2
 oauth_manager = OAuthManager(app)
 app.state.oauth_manager = oauth_manager
@@ -630,6 +654,37 @@ app.state.redis = None
 
 app.state.WEBUI_NAME = WEBUI_NAME
 app.state.LICENSE_METADATA = None
+
+from pathlib import Path
+
+@app.get("/favicon.png", include_in_schema=False)
+async def root_favicon_png():
+    path = Path(STATIC_DIR) / "favicon.png"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(path, media_type="image/png")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def root_favicon_ico():
+    # Prefer a real .ico if you have one, otherwise fall back to the PNG
+    ico_path = Path(STATIC_DIR) / "favicon.ico"
+    png_path = Path(STATIC_DIR) / "favicon.png"
+
+    if ico_path.is_file():
+        return FileResponse(ico_path, media_type="image/x-icon")
+    if png_path.is_file():
+        return FileResponse(png_path, media_type="image/png")
+
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.get("/user.png", include_in_schema=False)
+async def root_user_png():
+    path = Path(STATIC_DIR) / "user.png"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(path, media_type="image/png")
 
 
 ########################################
@@ -1241,6 +1296,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# --- SPICE Circuit Analyzer API (embedded) ---
+# Exposes:
+#   POST /api/v1/spice/upload
+#   POST /api/v1/spice/chat
+#   POST /api/v1/spice/diagnose
+#   GET  /api/v1/spice/health
+# open_webui/main.py
+try:
+    from open_webui.spice_api import app as spice_app
+    app.mount("/api/v1/spice", spice_app)
+    log.info("Mounted SPICE API at /api/v1/spice")
+except Exception as e:
+    log.warning(f"SPICE API not mounted: {e}")
 
 
 app.mount("/ws", socket_app)
@@ -2040,9 +2110,6 @@ async def healthcheck():
 async def healthcheck_with_db():
     Session.execute(text("SELECT 1;")).all()
     return {"status": True}
-
-
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/cache/{path:path}")

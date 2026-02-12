@@ -1,3 +1,10 @@
+
+/*
+This script pre-bundles a Pyodide-based Python environment with data science
+and ML libraries, ensuring fast, reproducible, and offline-safe execution
+of Python code within the application.
+*/
+
 const packages = [
 	'micropip',
 	'packaging',

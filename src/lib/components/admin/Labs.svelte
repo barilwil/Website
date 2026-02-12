@@ -8,9 +8,10 @@
 		getCourses,
 		getLabsForCourse,
 		createCourse,
-		updateCourse
+		updateCourse,
+		deleteCourse
 	} from '$lib/apis/courses';
-	import { createLab, updateLab } from '$lib/apis/labs';
+	import { createLab, updateLab, deleteLab } from '$lib/apis/labs';
 
 	const i18n = getContext('i18n');
 
@@ -202,6 +203,74 @@
 			saving = false;
 		}
 	}
+
+	async function handleDeleteLab(course: Course, lab: Lab) {
+		if (!confirm(`Delete lab "${lab.name}"? This will remove its chat channel and knowledge base.`)) {
+			return;
+		}
+
+		saving = true;
+		try {
+			const ok = await deleteLab(localStorage.token, lab.id);
+
+			if (!ok) {
+				toast.error('Failed to delete lab');
+				return;
+			}
+
+			toast.success('Lab deleted');
+			await loadCourses();
+
+			// Re-select the same course if it still exists
+			if (courses.some((c) => c.id === course.id)) {
+				selectedCourseId = course.id;
+			} else if (courses.length) {
+				selectedCourseId = courses[0].id;
+			} else {
+				selectedCourseId = null;
+			}
+		} catch (e) {
+			toast.error(`${e}`);
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function handleDeleteCourse(course: Course) {
+		if (
+			!confirm(
+				`Delete course "${course.code}"?\n\nThis will delete the course, its labs, their resources, the course channel, and associated groups.`
+			)
+		) {
+			return;
+		}
+
+		saving = true;
+		try {
+			const ok = await deleteCourse(localStorage.token, course.id);
+
+			if (!ok) {
+				toast.error('Failed to delete course');
+				return;
+			}
+
+			toast.success('Course deleted');
+			await loadCourses();
+
+			// Adjust selected course after deletion
+			if (courses.length) {
+				selectedCourseId = courses[0].id;
+			} else {
+				selectedCourseId = null;
+			}
+		} catch (e) {
+			toast.error(`${e}`);
+		} finally {
+			saving = false;
+		}
+	}
+
+
 </script>
 
 <main class="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
@@ -262,14 +331,30 @@
 									{/if}
 								</div>
 
-								<label class="flex items-center gap-1 text-[11px] text-neutral-500">
-									<input
-										type="checkbox"
-										checked={course.enabled}
-										on:change={() => toggleCourseEnabled(course)}
-									/>
-									<span>Enabled</span>
-								</label>
+								<div class="flex items-center gap-2">
+									<label class="flex items-center gap-1 text-[11px] text-neutral-500">
+										<input
+											type="checkbox"
+											checked={course.enabled}
+											on:change={(event) => {
+				event.stopPropagation();
+				toggleCourseEnabled(course);
+			}}
+										/>
+										<span>Enabled</span>
+									</label>
+
+									<button
+										type="button"
+										class="text-[11px] text-red-500 hover:text-red-600 underline"
+										on:click={(event) => {
+											event.stopPropagation();
+											handleDeleteCourse(course);
+										}}
+									>
+										Delete
+									</button>
+								</div>
 							</button>
 						{/each}
 					</div>
@@ -349,14 +434,24 @@
 											{/if}
 										</div>
 
-										<label class="flex items-center gap-1 text-[11px] text-neutral-500">
-											<input
-												type="checkbox"
-												checked={lab.enabled}
-												on:change={() => toggleLabEnabled(selectedCourse, lab)}
-											/>
-											<span>Enabled</span>
-										</label>
+										<div class="flex items-center gap-3">
+											<label class="flex items-center gap-1 text-[11px] text-neutral-500">
+												<input
+													type="checkbox"
+													checked={lab.enabled}
+													on:change={() => toggleLabEnabled(selectedCourse, lab)}
+												/>
+												<span>Enabled</span>
+											</label>
+
+											<button
+												type="button"
+												class="text-[11px] text-red-500 hover:text-red-600 underline"
+												on:click={() => handleDeleteLab(selectedCourse, lab)}
+											>
+												Delete
+											</button>
+										</div>
 									</div>
 								{/each}
 							</div>

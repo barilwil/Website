@@ -1,3 +1,15 @@
+<!--
+TL;DR:
+Authenticated app shell/layout.
+- Enforces login (redirects to /auth) and shows AccountPending for non-user/admin roles.
+- Bootstraps global state: UI settings, models, tools, banners, tool servers.
+- Migrates legacy browser-stored chats (IndexedDB) by prompting user to download & delete.
+- Registers global keyboard shortcuts (search, new chat, copy, settings, sidebar, temp chat).
+- Optionally shows changelog/version update checks (admin) and renders Sidebar on most routes.
+- Renders child pages (<slot/>) once initialization finishes; otherwise shows a spinner.
+-->
+
+
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
 	import { onMount, tick, getContext } from 'svelte';
@@ -7,6 +19,9 @@
 
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+
+
+
 	import { fade } from 'svelte/transition';
 
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
@@ -36,6 +51,7 @@
 		showShortcuts,
 		showChangelog,
 		temporaryChatEnabled,
+		chatBasePath,
 		toolServers,
 		showSearch,
 		showSidebar
@@ -218,7 +234,7 @@
 						temporaryChatEnabled.set(!$temporaryChatEnabled);
 					}
 
-					await goto('/assistant');
+					await goto($chatBasePath);
 					const newChatButton = document.getElementById('new-chat-button');
 					setTimeout(() => {
 						newChatButton?.click();
@@ -273,7 +289,7 @@
 <SettingsModal bind:show={$showSettings} />
 <ChangelogModal bind:show={$showChangelog} />
 
-<!--
+<!-- Shows Changelog if a new version is availabl
 {#if version && compareVersion(version.latest, version.current) && ($settings?.showUpdateToast ?? true)}
 	<div class=" absolute bottom-8 right-8 z-50" in:fade={{ duration: 100 }}>
 		<UpdateInfoToast
@@ -290,8 +306,9 @@
 {#if $user}
 	<div class="app relative">
 		<div
-			class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end"
+			class="text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end"
 		>
+
 			{#if !['user', 'admin'].includes($user?.role)}
 				<AccountPending />
 			{:else}
@@ -350,7 +367,7 @@
 					</div>
 				{/if}
 
-				{#if $page.url.pathname !== '/' && !$page.url.pathname.startsWith('/labs')}
+				{#if $page.url.pathname !== '/' && $page.url.pathname !== '/labs'}
 					<Sidebar />
 				{/if}
 

@@ -8,6 +8,8 @@
 	// Default values for permissions
 	const DEFAULT_PERMISSIONS = {
 		workspace: {
+			my_uploads: true,
+			lab_resources: false,
 			models: false,
 			knowledge: false,
 			prompts: false,
@@ -34,9 +36,9 @@
 			edit: true,
 			share: true,
 			export: true,
-			stt: true,
-			tts: true,
-			call: true,
+			stt: false,
+			tts: false,
+			call: false,
 			multiple_models: true,
 			temporary: true,
 			temporary_enforced: false
@@ -82,6 +84,41 @@
 
 	<div>
 		<div class=" mb-2 text-sm font-medium">{$i18n.t('Workspace Permissions')}</div>
+
+		<!-- My Uploads Access -->
+		<div class="flex flex-col w-full">
+			<div class="flex w-full justify-between my-1">
+				<div class=" self-center text-xs font-medium">
+					{$i18n.t('My Uploads Access')}
+				</div>
+				<Switch bind:state={permissions.workspace.my_uploads} />
+			</div>
+			{#if defaultPermissions?.workspace?.my_uploads && !permissions.workspace.my_uploads}
+				<div>
+					<div class="text-xs text-gray-500">
+						{$i18n.t('This is a default user permission and will remain enabled.')}
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Lab Resources Access -->
+		<div class="flex flex-col w-full">
+			<div class="flex w-full justify-between my-1">
+				<div class=" self-center text-xs font-medium">
+					{$i18n.t('Lab Resources Access')}
+				</div>
+				<Switch bind:state={permissions.workspace.lab_resources} />
+			</div>
+			{#if defaultPermissions?.workspace?.lab_resources && !permissions.workspace.lab_resources}
+				<div>
+					<div class="text-xs text-gray-500">
+						{$i18n.t('This is a default user permission and will remain enabled.')}
+					</div>
+				</div>
+			{/if}
+		</div>
+
 
 		<div class="flex flex-col w-full">
 			<div class="flex w-full justify-between my-1">

@@ -126,3 +126,4 @@ export const deleteLab = async (token: string, id: string) => {
 
 	return data as boolean;
 };
+

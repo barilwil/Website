@@ -1,3 +1,8 @@
+<!---
+Global error page.
+Displays the HTTP status code and error message from SvelteKit's page store
+for routing, load, or server-side failures.
+-->
 <script>
 	import { page } from '$app/stores';
 </script>

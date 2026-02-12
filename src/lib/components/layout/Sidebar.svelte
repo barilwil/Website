@@ -3,6 +3,8 @@
 	import { v4 as uuidv4 } from 'uuid';
 
 	import { goto } from '$app/navigation';
+
+
 	import {
 		user,
 		chats,
@@ -13,11 +15,13 @@
 		folders as _folders,
 		showSidebar,
 		showSearch,
+		chatBasePath,
 		mobile,
 		showArchivedChats,
 		pinnedChats,
 		scrollPaginationEnabled,
 		currentChatPage,
+		chatContext,
 		temporaryChatEnabled,
 		channels,
 		socket,
@@ -70,7 +74,11 @@
 	let navElement;
 	let shiftKey = false;
 
+	let chatContextUnsub: () => void;
+
+
 	let selectedChatId = null;
+
 	let showPinnedChat = true;
 
 	let showCreateChannel = false;
@@ -87,7 +95,7 @@
 	let newFolderId = null;
 
 	const initFolders = async () => {
-		const folderList = await getFolders(localStorage.token).catch((error) => {
+		const folderList = await getFolders(localStorage.token, $chatContext).catch((error) => {
 			toast.error(`${error}`);
 			return [];
 		});
@@ -167,14 +175,17 @@
 
 		const res = await createNewFolder(localStorage.token, {
 			name,
-			data
+			data,
+			// NEW: mirror chat context
+			context_type: $chatContext.context_type,
+			course_id: $chatContext.course_id,
+			lab_id: $chatContext.lab_id
 		}).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (res) {
-			// newFolderId = res.id;
 			await initFolders();
 		}
 	};
@@ -192,7 +203,9 @@
 		currentChatPage.set(1);
 		allChatsLoaded = false;
 
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(
+			await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+		);
 
 		// Enable pagination
 		scrollPaginationEnabled.set(true);
@@ -205,7 +218,12 @@
 
 		let newChatList = [];
 
-		newChatList = await getChatList(localStorage.token, $currentChatPage);
+		newChatList = await getChatList(
+			localStorage.token,
+			$currentChatPage,
+			false,
+			$chatContext
+		);
 
 		// once the bottom of the list has been reached (no results) there is no need to continue querying
 		allChatsLoaded = newChatList.length === 0;
@@ -226,7 +244,8 @@
 					pinned,
 					folderId,
 					item?.created_at ?? null,
-					item?.updated_at ?? null
+					item?.updated_at ?? null,
+					$chatContext
 				);
 			}
 		}
@@ -391,6 +410,11 @@
 			initFolders();
 		});
 
+		chatContextUnsub = chatContext.subscribe(() => {
+			// whenever we switch general ↔ lab ↔ channel, reload folders
+			initFolders();
+		});
+
 		await initChannels();
 		await initChatList();
 
@@ -411,6 +435,11 @@
 	});
 
 	onDestroy(() => {
+
+		if (chatContextUnsub) {
+			chatContextUnsub();
+		}
+
 		window.removeEventListener('keydown', onKeyDown);
 		window.removeEventListener('keyup', onKeyUp);
 
@@ -518,10 +547,11 @@
 	id="sidebar-new-chat-button"
 	class="hidden"
 	on:click={() => {
-		goto('/assistant');
+		goto($chatBasePath);
 		newChatHandler();
 	}}
 />
+
 
 {#if !$mobile && !$showSidebar}
 	<div
@@ -564,15 +594,15 @@
 					<Tooltip content={$i18n.t('New Chat')} placement="right">
 						<a
 							class=" cursor-pointer flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition group"
-							href="/assistant"
+							href={chatBasePath}
 							draggable="false"
 							on:click={async (e) => {
-      					e.stopImmediatePropagation();
-      					e.preventDefault();
+								e.stopImmediatePropagation();
+								e.preventDefault();
 
-      					goto('/assistant');
-      					newChatHandler();
-    					}}
+								await goto(chatBasePath);
+								newChatHandler();
+							}}
 							aria-label={$i18n.t('New Chat')}
 						>
 							<div class=" self-center flex items-center justify-center size-9">
@@ -626,8 +656,16 @@
 					</div>
 				{/if}
 				<!---Before: {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools} --->
-				{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.tools}
-					<div class="">
+				{#if
+					$user?.role === 'admin' ||
+					$user?.permissions?.workspace?.my_uploads ||
+					$user?.permissions?.workspace?.lab_resources ||
+					$user?.permissions?.workspace?.models ||
+					$user?.permissions?.workspace?.knowledge ||
+					$user?.permissions?.workspace?.prompts ||
+					$user?.permissions?.workspace?.tools
+				}
+				<div class="">
 						<Tooltip content={$i18n.t('Workspace')} placement="right">
 							<a
 								class=" cursor-pointer flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition group"
@@ -720,13 +758,13 @@
 			>
 				<a
 					class="flex items-center rounded-xl size-8.5 h-full justify-center hover:bg-gray-100/50 dark:hover:bg-gray-850/50 transition no-drag-region"
-					href="/assistant"
+					href={$chatBasePath}
 					draggable="false"
 					on:click={(e) => {
-    				e.preventDefault();
-    				goto('/assistant');
-    				newChatHandler();
-  				}}
+						e.preventDefault();
+						goto($chatBasePath);
+						newChatHandler();
+					}}
 				>
 					<img
 						crossorigin="anonymous"
@@ -736,12 +774,13 @@
 					/>
 				</a>
 
+
 				<a
-					href="/assistant"
+					href={$chatBasePath}
 					class="flex flex-1 px-1.5"
 					on:click={(e) => {
     				e.preventDefault();
-    				goto('/assistant');
+    				goto($chatBasePath);
     				newChatHandler();
   				}}
 				>
@@ -791,9 +830,13 @@
 						<a
 							id="sidebar-new-chat-button"
 							class="grow flex items-center space-x-3 rounded-2xl px-2.5 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition outline-none"
-							href="/assistant"
+							href={$chatBasePath}
 							draggable="false"
-							on:click={newChatHandler}
+							on:click={(e) => {
+								e.preventDefault();
+								goto($chatBasePath);   // /assistant or /labs/[classId]/[labId]
+								newChatHandler();
+							}}
 							aria-label={$i18n.t('New Chat')}
 						>
 							<div class="self-center">
@@ -847,7 +890,15 @@
 						</div>
 					{/if}
 					<!---Before: {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools} --->
-					{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.tools}
+					{#if
+						$user?.role === 'admin' ||
+						$user?.permissions?.workspace?.my_uploads ||
+						$user?.permissions?.workspace?.lab_resources ||
+						$user?.permissions?.workspace?.models ||
+						$user?.permissions?.workspace?.knowledge ||
+						$user?.permissions?.workspace?.prompts ||
+						$user?.permissions?.workspace?.tools
+					}
 						<div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
 							<a
 								id="sidebar-workspace-button"
@@ -972,7 +1023,7 @@
 					chevron={false}
 					on:change={async (e) => {
 						selectedFolder.set(null);
-						await goto('/assistant');
+						await goto($chatBasePath);
 					}}
 					on:import={(e) => {
 						importChatHandler(e.detail);
@@ -992,9 +1043,11 @@
 									false,
 									null,
 									item?.created_at ?? null,
-									item?.updated_at ?? null
+									item?.updated_at ?? null,
+									$chatContext
 								);
 							}
+
 
 							if (chat) {
 								console.log(chat);
@@ -1061,7 +1114,8 @@
 													false,
 													null,
 													item?.created_at ?? null,
-													item?.updated_at ?? null
+													item?.updated_at ?? null,
+													$chatContext
 												);
 											}
 

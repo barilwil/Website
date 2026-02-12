@@ -1,4 +1,4 @@
-import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import { WEBUI_API_BASE_URL, WEBUI_BASE_URL, SPICE_API_BASE_URL } from '$lib/constants';
 import { convertOpenApiToToolPayload } from '$lib/utils';
 import { getOpenAIModelsDirect } from './openai';
 
@@ -197,6 +197,145 @@ export const chatCompleted = async (token: string, body: ChatCompletedForm) => {
 
 	return res;
 };
+
+// =====================================================
+// SPICE Lab Assistant (integrated backend API)
+// =====================================================
+
+export const spiceHealth = async () => {
+	let error = null;
+	const res = await fetch(`${SPICE_API_BASE_URL}/health`, {
+		method: 'GET',
+		headers: {
+			Accept: 'application/json'
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
+export const spiceChat = async (question: string, token: string = '') => {
+	let error = null;
+	const res = await fetch(`${SPICE_API_BASE_URL}/chat`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		},
+		body: JSON.stringify({ question })
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
+export const spiceDiagnose = async (circuit_id: string | null = null, token: string = '') => {
+	let error = null;
+	const res = await fetch(`${SPICE_API_BASE_URL}/diagnose`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		},
+		body: JSON.stringify({ circuit_id })
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
+export const spiceUploadCircuit = async (
+	circuit_file: File,
+	log_file: File,
+	token: string = ''
+) => {
+	let error = null;
+	const form = new FormData();
+	form.append('circuit_file', circuit_file);
+	form.append('log_file', log_file);
+
+	const res = await fetch(`${SPICE_API_BASE_URL}/upload`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		},
+		body: form
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
+export const spiceUploadById = async (
+	circuit_file_id: string,
+	log_file_id: string,
+	token: string = ''
+) => {
+	let error = null;
+
+	const res = await fetch(`${SPICE_API_BASE_URL}/upload/by-id`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		},
+		body: JSON.stringify({ circuit_file_id, log_file_id })
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
 
 type ChatActionForm = {
 	model: string;

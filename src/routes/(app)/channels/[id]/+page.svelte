@@ -5,3 +5,6 @@
 </script>
 
 <Channel id={$page.params.id} />
+
+
+

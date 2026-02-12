@@ -13,6 +13,7 @@ import markdown
 from bs4 import BeautifulSoup
 from open_webui.constants import ERROR_MESSAGES
 
+
 ####################################
 # Load .env file
 ####################################
@@ -22,12 +23,18 @@ ENV_FILE_PATH = Path(__file__).resolve()
 
 # OPEN_WEBUI_DIR should be the directory where env.py resides (open_webui/)
 OPEN_WEBUI_DIR = ENV_FILE_PATH.parent
+OPEN_WEBUI_DIR = Path(__file__).resolve().parent
 
 # BACKEND_DIR is the parent of OPEN_WEBUI_DIR (backend/)
 BACKEND_DIR = OPEN_WEBUI_DIR.parent
 
 # BASE_DIR is the parent of BACKEND_DIR (open-webui-dev/)
 BASE_DIR = BACKEND_DIR.parent
+
+STATIC_DIR = Path(os.getenv("STATIC_DIR", BASE_DIR / "static")).resolve()
+FONTS_DIR = Path(os.getenv("FONTS_DIR", STATIC_DIR / "fonts")).resolve()
+
+
 
 try:
     from dotenv import find_dotenv, load_dotenv
@@ -114,7 +121,7 @@ WEBUI_NAME = os.environ.get("WEBUI_NAME", "Open WebUI")
 if WEBUI_NAME != "Open WebUI":
     WEBUI_NAME += " (Open WebUI)"
 
-WEBUI_FAVICON_URL = "https://openwebui.com/favicon.png"
+WEBUI_FAVICON_URL = "/static/favicon.png"
 
 TRUSTED_SIGNATURE_KEY = os.environ.get("TRUSTED_SIGNATURE_KEY", "")
 
@@ -246,9 +253,6 @@ if FROM_INIT_PY:
 
     DATA_DIR = Path(os.getenv("DATA_DIR", OPEN_WEBUI_DIR / "data"))
 
-STATIC_DIR = Path(os.getenv("STATIC_DIR", OPEN_WEBUI_DIR / "static"))
-
-FONTS_DIR = Path(os.getenv("FONTS_DIR", OPEN_WEBUI_DIR / "static" / "fonts"))
 
 FRONTEND_BUILD_DIR = Path(os.getenv("FRONTEND_BUILD_DIR", BASE_DIR / "build")).resolve()
 

@@ -41,6 +41,12 @@ class Chat(Base):
     meta = Column(JSON, server_default="{}")
     folder_id = Column(Text, nullable=True)
 
+    # NEW: context fields
+    # 'general' for normal assistant, 'lab' for lab-specific, 'channel' for course channels etc.
+    context_type = Column(String, nullable=False, server_default="general")
+    course_id = Column(String, nullable=True)
+    lab_id = Column(String, nullable=True)
+
     __table_args__ = (
         # Performance indexes for common queries
         # WHERE folder_id = ...
@@ -53,7 +59,12 @@ class Chat(Base):
         Index("updated_at_user_id_idx", "updated_at", "user_id"),
         # WHERE folder_id = ... AND user_id = ...
         Index("folder_id_user_id_idx", "folder_id", "user_id"),
+        # NEW: WHERE user_id = ... AND context_type = ...
+        Index("user_id_context_type_idx", "user_id", "context_type"),
+        # NEW: WHERE context_type/course_id/lab_id triple is used
+        Index("context_type_course_lab_idx", "context_type", "course_id", "lab_id"),
     )
+
 
 
 class ChatModel(BaseModel):
@@ -74,6 +85,12 @@ class ChatModel(BaseModel):
     meta: dict = {}
     folder_id: Optional[str] = None
 
+    # NEW
+    context_type: str = "general"
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
+
+
 
 ####################
 # Forms
@@ -83,6 +100,11 @@ class ChatModel(BaseModel):
 class ChatForm(BaseModel):
     chat: dict
     folder_id: Optional[str] = None
+
+    # NEW: optional context fields
+    context_type: Optional[str] = "general"
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
 
 
 class ChatImportForm(ChatForm):
@@ -114,6 +136,12 @@ class ChatResponse(BaseModel):
     meta: dict = {}
     folder_id: Optional[str] = None
 
+    # NEW
+    context_type: str = "general"
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
+
+
 
 class ChatTitleIdResponse(BaseModel):
     id: str
@@ -139,6 +167,12 @@ class ChatTable:
                     "folder_id": form_data.folder_id,
                     "created_at": int(time.time()),
                     "updated_at": int(time.time()),
+                    # new
+                    "context_type": (form_data.context_type or "general")
+                    if hasattr(form_data, "context_type")
+                    else "general",
+                    "course_id": getattr(form_data, "course_id", None),
+                    "lab_id": getattr(form_data, "lab_id", None),
                 }
             )
 
@@ -176,6 +210,12 @@ class ChatTable:
                         if form_data.updated_at
                         else int(time.time())
                     ),
+                    # NEW
+                    "context_type": (form_data.context_type or "general")
+                    if hasattr(form_data, "context_type")
+                    else "general",
+                    "course_id": getattr(form_data, "course_id", None),
+                    "lab_id": getattr(form_data, "lab_id", None),
                 }
             )
 
@@ -476,6 +516,19 @@ class ChatTable:
                 if query_key:
                     query = query.filter(Chat.title.ilike(f"%{query_key}%"))
 
+                # NEW: context filters
+                context_type = filter.get("context_type")
+                if context_type:
+                    query = query.filter(Chat.context_type == context_type)
+
+                course_id = filter.get("course_id")
+                if course_id is not None:
+                    query = query.filter(Chat.course_id == course_id)
+
+                lab_id = filter.get("lab_id")
+                if lab_id is not None:
+                    query = query.filter(Chat.lab_id == lab_id)
+
                 order_by = filter.get("order_by")
                 direction = filter.get("direction")
 
@@ -498,16 +551,26 @@ class ChatTable:
             return [ChatModel.model_validate(chat) for chat in all_chats]
 
     def get_chat_title_id_list_by_user_id(
-        self,
-        user_id: str,
-        include_archived: bool = False,
-        include_folders: bool = False,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
+            self,
+            user_id: str,
+            include_archived: bool = False,
+            include_folders: bool = False,
+            skip: Optional[int] = None,
+            limit: Optional[int] = None,
+            context_type: Optional[str] = None,
+            course_id: Optional[str] = None,
+            lab_id: Optional[str] = None,
     ) -> list[ChatTitleIdResponse]:
         with get_db() as db:
             query = db.query(Chat).filter_by(user_id=user_id)
 
+            # NEW: context filters
+            if context_type:
+                query = query.filter(Chat.context_type == context_type)
+            if course_id is not None:
+                query = query.filter(Chat.course_id == course_id)
+            if lab_id is not None:
+                query = query.filter(Chat.lab_id == lab_id)
             if not include_folders:
                 query = query.filter_by(folder_id=None)
 
@@ -626,11 +689,23 @@ class ChatTable:
         include_archived: bool = False,
         skip: int = 0,
         limit: int = 60,
+        context_type: Optional[str] = None,
+        course_id: Optional[str] = None,
+        lab_id: Optional[str] = None,
     ) -> list[ChatModel]:
         """
         Filters chats based on a search query using Python, allowing pagination using skip and limit.
         """
         search_text = search_text.replace("\u0000", "").lower().strip()
+
+        # NEW: base context filter
+        base_filter: dict = {}
+        if context_type:
+            base_filter["context_type"] = context_type
+        if course_id is not None:
+            base_filter["course_id"] = course_id
+        if lab_id is not None:
+            base_filter["lab_id"] = lab_id
 
         if not search_text:
             return self.get_chat_list_by_user_id(
@@ -691,6 +766,14 @@ class ChatTable:
 
         with get_db() as db:
             query = db.query(Chat).filter(Chat.user_id == user_id)
+
+            # NEW: context filters
+            if context_type:
+                query = query.filter(Chat.context_type == context_type)
+            if course_id is not None:
+                query = query.filter(Chat.course_id == course_id)
+            if lab_id is not None:
+                query = query.filter(Chat.lab_id == lab_id)
 
             if is_archived is not None:
                 query = query.filter(Chat.archived == is_archived)

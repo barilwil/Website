@@ -102,9 +102,13 @@
 	function handleStart() {
 		if (!selectedCourseId || !selectedLabId) return;
 
-		// Go into the lab session route
+		// Look up the selected course so we can use its code in the URL
+		const course = courses.find((c) => c.id === selectedCourseId);
+		const classCode = course?.code ?? selectedCourseId;
+
+		// Use course code in the URL (e.g., /labs/ECEN-214/<labId>)
 		goto(
-			`/labs/${encodeURIComponent(selectedCourseId)}/${encodeURIComponent(
+			`/labs/${encodeURIComponent(classCode)}/${encodeURIComponent(
 				selectedLabId
 			)}`
 		);
@@ -115,7 +119,7 @@
 	}
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10">
+<div class="min-h-[calc(100vh-4rem)] flex-1 flex items-center justify-center px-4 py-10">
 	<div
 		class="w-full max-w-3xl rounded-3xl bg-white dark:bg-neutral-900 shadow-xl border border-neutral-200 dark:border-neutral-800 px-6 py-5 md:px-8 md:py-6 space-y-4"
 	>

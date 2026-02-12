@@ -2,6 +2,11 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../support/index.d.ts" />
 
+/*
+It provides reusable Cypress commands that create a test admin user
+and manage a cached, validated login session so E2E tests can run fast and reliably.
+ */
+
 export const adminUser = {
 	name: 'Admin User',
 	email: 'admin@example.com',

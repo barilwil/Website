@@ -30,6 +30,7 @@ from open_webui.env import (
     WEBUI_AUTH,
     WEBUI_FAVICON_URL,
     WEBUI_NAME,
+    STATIC_DIR,
     log,
 )
 from open_webui.internal.db import Base, get_db
@@ -784,7 +785,7 @@ load_oauth_providers()
 # Static DIR
 ####################################
 
-STATIC_DIR = Path(os.getenv("STATIC_DIR", OPEN_WEBUI_DIR / "static")).resolve()
+#STATIC_DIR = Path(os.getenv("STATIC_DIR", OPEN_WEBUI_DIR / "static")).resolve()
 
 try:
     if STATIC_DIR.exists():
@@ -1196,6 +1197,17 @@ USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS = (
     == "true"
 )
 
+USER_PERMISSIONS_WORKSPACE_MY_UPLOADS_ACCESS = (
+        os.environ.get("USER_PERMISSIONS_WORKSPACE_MY_UPLOADS_ACCESS", "True").lower()
+        == "true"
+)
+
+USER_PERMISSIONS_WORKSPACE_LAB_RESOURCES_ACCESS = (
+        os.environ.get("USER_PERMISSIONS_WORKSPACE_LAB_RESOURCES_ACCESS", "False").lower()
+        == "true"
+)
+
+
 USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS = (
     os.environ.get("USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS", "False").lower()
     == "true"
@@ -1349,6 +1361,8 @@ USER_PERMISSIONS_FEATURES_NOTES = (
 
 DEFAULT_USER_PERMISSIONS = {
     "workspace": {
+        "my_uploads": USER_PERMISSIONS_WORKSPACE_MY_UPLOADS_ACCESS,
+        "lab_resources": USER_PERMISSIONS_WORKSPACE_LAB_RESOURCES_ACCESS,
         "models": USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS,
         "knowledge": USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS,
         "prompts": USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS,

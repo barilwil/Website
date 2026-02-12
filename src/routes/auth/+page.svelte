@@ -1,3 +1,11 @@
+<!--
+Auth/login page for the app.
+- Supports email sign-in, sign-up (optional confirm), LDAP login, and OAuth providers (Google/Microsoft/GitHub/OIDC/etc.).
+- On mount: handles redirect targets, shows URL errors, and completes OAuth callback by reading a token cookie.
+- On successful auth: stores token, updates user/config stores, joins socket session, and redirects into the app.
+- Optionally shows onboarding (first-time admin setup) and renders an optional sanitized markdown login footer.
+-->
+
 <script lang="ts">
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';

@@ -6,6 +6,8 @@ import type { Socket } from 'socket.io-client';
 
 import emojiShortCodes from '$lib/emoji-shortcodes.json';
 
+export const showWorkshop = writable(false);
+
 // Backend
 export const WEBUI_NAME = writable(APP_NAME);
 export const config: Writable<Config | undefined> = writable(undefined);
@@ -73,7 +75,7 @@ export const showSettings = writable(false);
 export const showShortcuts = writable(false);
 export const showArchivedChats = writable(false);
 export const showChangelog = writable(false);
-
+export const chatBasePath: Writable<string> = writable('/assistant');
 export const showControls = writable(false);
 export const showEmbeds = writable(false);
 export const showOverview = writable(false);
@@ -89,6 +91,19 @@ export const currentChatPage = writable(1);
 
 export const isLastActiveTab = writable(true);
 export const playingNotificationSound = writable(false);
+
+export type ChatContext = {
+	context_type: 'general' | 'lab' | 'channel';
+	course_id: string | null;
+	lab_id: string | null;
+};
+
+export const chatContext: Writable<ChatContext> = writable({
+	context_type: 'general',
+	course_id: null,
+	lab_id: null
+});
+
 
 export type Model = OpenAIModel | OllamaModel;
 

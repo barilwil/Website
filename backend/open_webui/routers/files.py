@@ -275,10 +275,8 @@ def upload_file_handler(
 
 @router.get("/", response_model=list[FileModelResponse])
 async def list_files(user=Depends(get_verified_user), content: bool = Query(True)):
-    if user.role == "admin":
-        files = Files.get_files()
-    else:
-        files = Files.get_files_by_user_id(user.id)
+    # Always return ONLY the current user's files
+    files = Files.get_files_by_user_id(user.id)
 
     if not content:
         for file in files:
@@ -286,6 +284,7 @@ async def list_files(user=Depends(get_verified_user), content: bool = Query(True
                 del file.data["content"]
 
     return files
+
 
 
 ############################
@@ -305,11 +304,8 @@ async def search_files(
     """
     Search for files by filename with support for wildcard patterns.
     """
-    # Get files according to user role
-    if user.role == "admin":
-        files = Files.get_files()
-    else:
-        files = Files.get_files_by_user_id(user.id)
+    # Always search only within the current user's files
+    files = Files.get_files_by_user_id(user.id)
 
     # Get matching files
     matching_files = [
@@ -640,7 +636,12 @@ async def get_html_file_content_by_id(id: str, user=Depends(get_verified_user)):
 
 
 @router.get("/{id}/content/{file_name}")
-async def get_file_content_by_id(id: str, user=Depends(get_verified_user)):
+async def get_file_content_by_id(
+        id: str,
+        file_name: str,  # <- add this
+        user=Depends(get_verified_user),
+):
+
     file = Files.get_file_by_id(id)
 
     if not file:
@@ -712,11 +713,39 @@ async def delete_file_by_id(id: str, user=Depends(get_verified_user)):
         )
 
     if (
-        file.user_id == user.id
-        or user.role == "admin"
-        or has_access_to_file(id, "write", user)
+            file.user_id == user.id
+            or user.role == "admin"
+            or has_access_to_file(id, "write", user)
     ):
+        # Clean up references to this file in any knowledge bases
+        try:
+            knowledge_bases = Knowledges.get_knowledge_bases()
+            for kb in knowledge_bases:
+                data = kb.data or {}
+                file_ids = data.get("file_ids", [])
 
+                if id in file_ids:
+                    # Remove vectors for this file from the knowledge collection
+                    try:
+                        VECTOR_DB_CLIENT.delete(
+                            collection_name=kb.id,
+                            filter={"file_id": id},
+                        )
+                    except Exception as e:
+                        log.debug(
+                            "Error deleting vectors for file from knowledge collection",
+                        )
+                        log.debug(e)
+
+                    # Remove the file id from the knowledge's data
+                    file_ids = [fid for fid in file_ids if fid != id]
+                    data["file_ids"] = file_ids
+                    Knowledges.update_knowledge_data_by_id(kb.id, data=data)
+        except Exception as e:
+            # Don't block file deletion if cleanup fails, but log it
+            log.exception(e)
+
+        # Now delete the file itself and its own vector collection
         result = Files.delete_file_by_id(id)
         if result:
             try:

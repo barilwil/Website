@@ -1,4 +1,18 @@
 <script>
+/*
+Root application layout and bootstrapper.
+- Loads global styles and UI providers (Tailwind, app.css, tooltips, toasts)
+- Initializes backend config, authentication, and session handling
+- Sets up i18n and theme (light/dark/system)
+- Establishes realtime Socket.IO connection and global chat/channel event handlers
+- Manages notifications, sounds, and multi-tab coordination
+- Executes Python safely in a Web Worker (Pyodide) and dispatches external tool calls
+- Handles direct LLM chat completions and streaming responses
+- Enforces auth redirects, token expiration, and error routing
+- Supports app vs web layouts and auto-reloads on new frontend deployments
+ */
+
+
 	import { io } from 'socket.io-client';
 	import { spring } from 'svelte/motion';
 	import PyodideWorker from '$lib/workers/pyodide.worker?worker';
@@ -19,6 +33,7 @@
 		chatId,
 		chats,
 		currentChatPage,
+		chatContext,
 		tags,
 		temporaryChatEnabled,
 		isLastActiveTab,
@@ -313,7 +328,9 @@
 				}
 			} else if (type === 'chat:title') {
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(
+					await getChatList(localStorage.token, $currentChatPage, false, $chatContext)
+				);
 			} else if (type === 'chat:tags') {
 				tags.set(await getAllTags(localStorage.token));
 			}

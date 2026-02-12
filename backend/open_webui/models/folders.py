@@ -1,7 +1,7 @@
 import logging
 import time
 import uuid
-from typing import Optional
+from typing import Optional, Union
 import re
 
 
@@ -33,19 +33,26 @@ class Folder(Base):
     is_expanded = Column(Boolean, default=False)
     created_at = Column(BigInteger)
     updated_at = Column(BigInteger)
-
+    context_type = Column(Text, nullable=False, server_default="general")
+    course_id = Column(Text, nullable=True)
+    lab_id = Column(Text, nullable=True)
 
 class FolderModel(BaseModel):
     id: str
     parent_id: Optional[str] = None
     user_id: str
     name: str
-    items: Optional[dict] = None
+    # 👇 change this line:
+    items: Optional[Union[dict, list]] = None
     meta: Optional[dict] = None
     data: Optional[dict] = None
     is_expanded: bool = False
     created_at: int
     updated_at: int
+
+    context_type: str = "general"
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -73,6 +80,11 @@ class FolderForm(BaseModel):
     name: str
     data: Optional[dict] = None
     meta: Optional[dict] = None
+
+    context_type: str = "general"
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -80,35 +92,46 @@ class FolderUpdateForm(BaseModel):
     name: Optional[str] = None
     data: Optional[dict] = None
     meta: Optional[dict] = None
+    context_type: Optional[str] = None
+    course_id: Optional[str] = None
+    lab_id: Optional[str] = None
+
     model_config = ConfigDict(extra="allow")
 
 
 class FolderTable:
-    def insert_new_folder(
-        self, user_id: str, form_data: FolderForm, parent_id: Optional[str] = None
-    ) -> Optional[FolderModel]:
+    def insert_new_folder(self, user_id: str, form_data: FolderForm) -> Optional[FolderModel]:
         with get_db() as db:
-            id = str(uuid.uuid4())
-            folder = FolderModel(
-                **{
-                    "id": id,
-                    "user_id": user_id,
-                    **(form_data.model_dump(exclude_unset=True) or {}),
-                    "parent_id": parent_id,
-                    "created_at": int(time.time()),
-                    "updated_at": int(time.time()),
-                }
+            now = int(time.time())
+
+            # Safely grab context from the form (defaults handled by FolderForm)
+            context_type = form_data.context_type or "general"
+            course_id = form_data.course_id
+            lab_id = form_data.lab_id
+
+            folder = Folder(
+                id=str(uuid.uuid4()),
+                parent_id=None,  # or set this from form_data if you add it later
+                user_id=user_id,
+                name=form_data.name,
+                items=[],
+                meta=form_data.meta or {},
+                data=form_data.data or {},
+                is_expanded=False,
+                created_at=now,
+                updated_at=now,
+                context_type=context_type,
+                course_id=course_id,
+                lab_id=lab_id,
             )
+
             try:
-                result = Folder(**folder.model_dump())
-                db.add(result)
+                db.add(folder)
                 db.commit()
-                db.refresh(result)
-                if result:
-                    return FolderModel.model_validate(result)
-                else:
-                    return None
+                db.refresh(folder)
+                return FolderModel.model_validate(folder)
             except Exception as e:
+                db.rollback()
                 log.exception(f"Error inserting a new folder: {e}")
                 return None
 
@@ -150,12 +173,29 @@ class FolderTable:
         except Exception:
             return None
 
-    def get_folders_by_user_id(self, user_id: str) -> list[FolderModel]:
+    def get_folders_by_user_id(
+            self,
+            user_id: str,
+            context_type: Optional[str] = None,
+            course_id: Optional[str] = None,
+            lab_id: Optional[str] = None,
+    ) -> list[FolderModel]:
         with get_db() as db:
+            query = db.query(Folder).filter_by(user_id=user_id)
+
+            # Mirror chat context filtering
+            if context_type:
+                    query = query.filter(Folder.context_type == context_type)
+            if course_id is not None:
+                query = query.filter(Folder.course_id == course_id)
+            if lab_id is not None:
+                query = query.filter(Folder.lab_id == lab_id)
+
             return [
                 FolderModel.model_validate(folder)
-                for folder in db.query(Folder).filter_by(user_id=user_id).all()
+                for folder in query.all()
             ]
+
 
     def get_folder_by_parent_id_and_user_id_and_name(
         self, parent_id: Optional[str], user_id: str, name: str

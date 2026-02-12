@@ -150,7 +150,6 @@ export const updateCourse = async (
 	return data;
 };
 
-
 export const deleteCourse = async (token: string, id: string) => {
 	let error: unknown = null;
 

@@ -9,6 +9,8 @@
 
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { WEBUI_BASE_URL } from '$lib/constants';
+
 	import {
 		mobile,
 		showSidebar,
@@ -55,6 +57,9 @@
 
 	let largeScreen = true;
 
+	export let knowledgeId: string | null = null;
+
+
 	let pane;
 	let showSidepanel = true;
 	let minSize = 0;
@@ -98,19 +103,37 @@
 	let selectedFileId = null;
 	let selectedFileContent = '';
 
+	// toggle between transcript vs embedded view
+	let showEmbedded = false;
+
 	// Add cache object
 	let fileContentCache = new Map();
+
 
 	$: if (selectedFileId) {
 		const file = (knowledge?.files ?? []).find((file) => file.id === selectedFileId);
 		if (file) {
 			fileSelectHandler(file);
+			scrollEditorIntoView();
 		} else {
 			selectedFile = null;
 		}
 	} else {
 		selectedFile = null;
 	}
+
+	async function scrollEditorIntoView() {
+		// Wait for DOM to update (so textarea exists)
+		await tick();
+		const container = document.getElementById('collection-container');
+		if (container) {
+			container.scrollIntoView({
+				behavior: 'smooth',
+				block: 'end'
+			});
+		}
+	}
+
 
 	let fuse = null;
 	let debounceTimeout = null;
@@ -506,6 +529,7 @@
 	const fileSelectHandler = async (file) => {
 		try {
 			selectedFile = file;
+			showEmbedded = false;
 
 			// Check cache first
 			if (fileContentCache.has(file.id)) {
@@ -597,7 +621,7 @@
 			pane.expand();
 		}
 
-		id = $page.params.id;
+		id = knowledgeId ?? $page.params.id;
 
 		const res = await getKnowledgeById(localStorage.token, id).catch((e) => {
 			toast.error(`${e}`);
@@ -735,8 +759,11 @@
 			</div>
 		</div>
 
-		<div class="flex flex-row flex-1 h-full max-h-full pb-2.5 gap-3">
-			{#if largeScreen}
+		<div
+			class="flex flex-row w-full pb-2.5 gap-3"
+			style="min-height: 60vh;"
+		>
+		{#if largeScreen}
 				<div class="flex-1 flex justify-start w-full h-full max-h-full">
 					{#if selectedFile}
 						<div class=" flex flex-col w-full">
@@ -754,7 +781,7 @@
 									</div>
 								{/if}
 
-								<div class=" flex-1 text-xl font-medium">
+								<div class="flex-1 text-xl font-medium flex items-center gap-2">
 									<a
 										class="hover:text-gray-500 dark:hover:text-gray-100 hover:underline grow line-clamp-1"
 										href={selectedFile.id ? `/api/v1/files/${selectedFile.id}/content` : '#'}
@@ -762,6 +789,20 @@
 									>
 										{decodeString(selectedFile?.meta?.name)}
 									</a>
+
+									<button
+										type="button"
+										class="text-xs px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+										on:click={() => {
+            					showEmbedded = !showEmbedded;
+        						}}
+									>
+										{#if showEmbedded}
+											{$i18n.t('Show text')}
+										{:else}
+											{$i18n.t('View original')}
+										{/if}
+									</button>
 								</div>
 
 								<div>
@@ -783,16 +824,34 @@
 							</div>
 
 							<div
-								class=" flex-1 w-full h-full max-h-full text-sm bg-transparent outline-hidden overflow-y-auto scrollbar-hidden"
+								class="flex-1 w-full text-sm bg-transparent outline-hidden overflow-hidden"
+								style="min-height: 70vh; max-height: calc(100vh - 220px);"
 							>
-								{#key selectedFile.id}
-									<textarea
-										class="w-full h-full outline-none resize-none"
-										bind:value={selectedFileContent}
-										placeholder={$i18n.t('Add content here')}
-									/>
-								{/key}
+								{#if showEmbedded}
+									{#if selectedFile?.id}
+										<iframe
+											src={`${WEBUI_BASE_URL}/api/v1/files/${selectedFile.id}/content`}
+											title={decodeString(selectedFile?.meta?.name) ?? 'File preview'}
+											class="w-full h-full rounded-lg bg-white"
+										/>
+									{:else}
+										<div class="my-3 flex flex-col justify-center text-center text-gray-500 text-xs">
+											<div>{$i18n.t('No file selected')}</div>
+										</div>
+									{/if}
+								{:else}
+									{#key selectedFile.id}
+										<textarea
+											class="w-full h-full outline-none resize-none"
+											bind:value={selectedFileContent}
+											placeholder={$i18n.t('Add content here')}
+										/>
+									{/key}
+								{/if}
 							</div>
+
+
+
 						</div>
 					{:else}
 						<div class="h-full flex w-full">
@@ -823,9 +882,24 @@
 										<ChevronLeft strokeWidth="2.5" />
 									</button>
 								</div>
-								<div class=" flex-1 text-xl line-clamp-1">
-									{selectedFile?.meta?.name}
+								<div class=" flex-1 text-xl line-clamp-1 flex items-center gap-2">
+									<span class="truncate">{selectedFile?.meta?.name}</span>
+
+									<button
+										type="button"
+										class="text-xs px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+										on:click={() => {
+            					showEmbedded = !showEmbedded;
+        						}}
+									>
+										{#if showEmbedded}
+											{$i18n.t('Show text')}
+										{:else}
+											{$i18n.t('View original')}
+										{/if}
+									</button>
 								</div>
+
 
 								<div>
 									<button
@@ -846,15 +920,30 @@
 							</div>
 
 							<div
-								class=" flex-1 w-full h-full max-h-full py-2.5 px-3.5 rounded-lg text-sm bg-transparent overflow-y-auto scrollbar-hidden"
+								class="flex-1 w-full py-2.5 px-3.5 rounded-lg text-sm bg-transparent overflow-hidden"
+								style="min-height: 70vh;"
 							>
-								{#key selectedFile.id}
-									<textarea
-										class="w-full h-full outline-none resize-none"
-										bind:value={selectedFileContent}
-										placeholder={$i18n.t('Add content here')}
-									/>
-								{/key}
+								{#if showEmbedded}
+									{#if selectedFile?.id}
+										<iframe
+											src={`${WEBUI_BASE_URL}/api/v1/files/${selectedFile.id}/content`}
+											title={selectedFile?.meta?.name ?? 'File preview'}
+											class="w-full h-full rounded-lg bg-white"
+										/>
+									{:else}
+										<div class="my-3 flex flex-col justify-center text-center text-gray-500 text-xs">
+											<div>{$i18n.t('No file selected')}</div>
+										</div>
+									{/if}
+								{:else}
+									{#key selectedFile.id}
+										<textarea
+											class="w-full h-full outline-none resize-none"
+											bind:value={selectedFileContent}
+											placeholder={$i18n.t('Add content here')}
+										/>
+									{/key}
+								{/if}
 							</div>
 						</div>
 					</div>
