@@ -1,0 +1,71 @@
+* /Users/blake/Desktop/CAPSTONE/6.5_bench/6.5.asc
+V1 N004 0 5
+V2 N006 0 -5
+R1 N002 N001 100k
+R2 N005 0 4.621k
+R3 N002 N005 5.379k
+C1 N001 0 10u
+XU2 N005 N001 N004 N006 N002 AD8040
+D1 N003 0 D
+D2 0 N003 D
+R4 N003 N002 1k
+.model D D
+.lib "/Users/blake/Library/Application Support/LTspice/lib/cmp/standard.dio"
+.lib "/Users/blake/Library/Application Support/LTspice/lib/sub/ADI.lib"
+.ic V(N001) = 0.1
+.tran 0 10
+* -----------------------------------------------------------
+* AUTO-GENERATED MEASUREMENT COMMANDS
+* Copy and paste these into your LTspice Transient Simulation
+* Note: Frequency/Period triggers assume a 0V crossing.
+* -----------------------------------------------------------
+* Measurements for Node N004
+.meas TRAN avg_N004 AVG V(N004)
+.meas TRAN max_N004 MAX V(N004)
+.meas TRAN min_N004 MIN V(N004)
+.meas TRAN pp_N004 PP V(N004)
+.meas TRAN rms_N004 RMS V(N004)
+.meas TRAN period_N004 TRIG V(N004)=0 RISE=1 TARG V(N004)=0 RISE=2
+.meas TRAN freq_N004 PARAM 1/period_N004
+* Measurements for Node N006
+.meas TRAN avg_N006 AVG V(N006)
+.meas TRAN max_N006 MAX V(N006)
+.meas TRAN min_N006 MIN V(N006)
+.meas TRAN pp_N006 PP V(N006)
+.meas TRAN rms_N006 RMS V(N006)
+.meas TRAN period_N006 TRIG V(N006)=0 RISE=1 TARG V(N006)=0 RISE=2
+.meas TRAN freq_N006 PARAM 1/period_N006
+* Measurements for Node N002
+.meas TRAN avg_N002 AVG V(N002)
+.meas TRAN max_N002 MAX V(N002)
+.meas TRAN min_N002 MIN V(N002)
+.meas TRAN pp_N002 PP V(N002)
+.meas TRAN rms_N002 RMS V(N002)
+.meas TRAN period_N002 TRIG V(N002)=0 RISE=1 TARG V(N002)=0 RISE=2
+.meas TRAN freq_N002 PARAM 1/period_N002
+* Measurements for Node N001
+.meas TRAN avg_N001 AVG V(N001)
+.meas TRAN max_N001 MAX V(N001)
+.meas TRAN min_N001 MIN V(N001)
+.meas TRAN pp_N001 PP V(N001)
+.meas TRAN rms_N001 RMS V(N001)
+.meas TRAN period_N001 TRIG V(N001)=0 RISE=1 TARG V(N001)=0 RISE=2
+.meas TRAN freq_N001 PARAM 1/period_N001
+* Measurements for Node N005
+.meas TRAN avg_N005 AVG V(N005)
+.meas TRAN max_N005 MAX V(N005)
+.meas TRAN min_N005 MIN V(N005)
+.meas TRAN pp_N005 PP V(N005)
+.meas TRAN rms_N005 RMS V(N005)
+.meas TRAN period_N005 TRIG V(N005)=0 RISE=1 TARG V(N005)=0 RISE=2
+.meas TRAN freq_N005 PARAM 1/period_N005
+* Measurements for Node N003
+.meas TRAN avg_N003 AVG V(N003)
+.meas TRAN max_N003 MAX V(N003)
+.meas TRAN min_N003 MIN V(N003)
+.meas TRAN pp_N003 PP V(N003)
+.meas TRAN rms_N003 RMS V(N003)
+.meas TRAN period_N003 TRIG V(N003)=0 RISE=1 TARG V(N003)=0 RISE=2
+.meas TRAN freq_N003 PARAM 1/period_N003
+.backanno
+.end
